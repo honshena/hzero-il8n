@@ -65,11 +65,11 @@ function writeCache(cache) {
   fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2), 'utf-8');
 }
 
-async function checkDailyUpdate(branch = 'master') {
+async function checkDailyUpdate(branch = 'master', force = false) {
   const cache = readCache();
   cache.updateCheck = cache.updateCheck || {};
   const today = todayStr();
-  if (cache.updateCheck.lastCheckDate === today) {
+  if (!force && cache.updateCheck.lastCheckDate === today) {
     return { action: 'skip-already-checked', reason: '今日已检查过更新' };
   }
   cache.updateCheck.lastCheckDate = today;
@@ -103,12 +103,14 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   const ok = (r) => { console.log(JSON.stringify(r, null, 2)); process.exit(0); };
   const fail = (e) => { console.error(JSON.stringify({ error: e.message }, null, 2)); process.exit(1); };
-  if (args[0] === '--daily') {
-    checkDailyUpdate(args[1] || 'master').then(ok).catch(fail);
-  } else if (args[0] === '--skip') {
+  if (args[0] === '--skip') {
     if (!args[1]) fail(new Error('缺少版本号: --skip <version>'));
     ok(skipVersion(args[1]));
+  } else if (args[0] === '--force') {
+    checkDailyUpdate(args[1] || 'master', true).then(ok).catch(fail);
   } else {
-    checkUpdate(args[0] || 'master').then(ok).catch(fail);
+    // 默认 cache-first（今日已检查则不调用网络）；--daily 为别名
+    const branch = args[0] === '--daily' ? (args[1] || 'master') : (args[0] || 'master');
+    checkDailyUpdate(branch, false).then(ok).catch(fail);
   }
 }

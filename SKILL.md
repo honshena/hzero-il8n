@@ -114,14 +114,15 @@ if (!result.valid) {
 
 ## 每日更新检查
 
-**每天首次使用本 skill 时，必须先执行每日更新检查（每天仅一次）：**
+**每天首次使用本 skill 时，必须先执行每日更新检查（每天仅一次）。检查为 cache-first：先读 `cache.json` 的 `lastCheckDate`，若为今天则直接返回 `skip-already-checked`，不调用网络接口；仅当今日未检查过、或用户明确要求重新检查时才调用接口。**
 
 ```javascript
 const { checkDailyUpdate } = require('./scripts/update');
-const r = await checkDailyUpdate();  // 默认 master 分支
+const r = await checkDailyUpdate();                // 默认 master 分支，cache-first
+const r2 = await checkDailyUpdate('master', true); // force：绕过缓存强制重新检查
 ```
 
-或直接运行：`node scripts/update.js --daily`
+或直接运行：`node scripts/update.js`（cache-first）/ `node scripts/update.js --force`（强制重新检查）
 
 返回 `action` 决定后续行为：
 
@@ -139,6 +140,8 @@ const r = await checkDailyUpdate();  // 默认 master 分支
 - **立即更新**：执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1`（或 `setup.bat`）重新注册命令（新增/修改的命令才会生效），提示用户重启 AI 工具
 - **跳过此版本**：运行 `node scripts/update.js --skip <latest>` 记录跳过，本次不再提示（直到出现更新的版本）
 - **稍后再说**：本次不更新，明天首次使用时再次提示
+
+**用户明确要求重新检查时**（如「重新检查更新」「强制检查」）：调用 `checkDailyUpdate(branch, true)` 或 `node scripts/update.js --force`，绕过缓存强制调用接口。
 
 `cache.json` 为本地文件（已加入 `.gitignore`），不应提交到仓库。
 
@@ -372,6 +375,14 @@ const { parseIntlGetCalls, parseFullIntlCode } = require('./scripts/utils');
 const all = await api.getPromptList({ promptKey: 'hskp.platform', size: 0 });
 ```
 
+## 特殊项目多语言文档
+
+部分项目前端不基于 h0 但后端基于 h0，多语言机制与通用规范（`doc/intl.md`）不同。这类项目的专属说明放在 `doc/{project}/` 下：
+
+- `doc/openplatform/README.md`：开放平台（hsop-front-app-openplatform）多语言说明
+
+**操作某项目前（根据 `fileProjectMap` 确定项目），若 `doc/{project}/` 存在，必须先阅读其说明并以其为准**，通用 `doc/intl.md` 仅作补充。新增特殊项目时，在 `doc/` 下新建 `{project}/` 子目录并补充说明。
+
 ## File Reference
 
 - `scripts/api.js`: API 调用封装
@@ -381,3 +392,4 @@ const all = await api.getPromptList({ promptKey: 'hskp.platform', size: 0 });
 - `scripts/update.js`: 版本更新检查
 - `doc/h0.md`: h0 平台规范
 - `doc/intl.md`: h0 多语言规范
+- `doc/openplatform/README.md`: 开放平台多语言说明（特殊项目）
