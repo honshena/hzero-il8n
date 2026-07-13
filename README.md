@@ -173,7 +173,8 @@ hzero-il8n/
 ├── SKILL.md                 # skill 主文档（流程、约束、API 用法）
 ├── README.md                # 本文档
 ├── commands/                # /hzero-il8n-* 斜杠命令定义
-├── scripts/                 # Node 脚本（api / csv / excel / utils / update）
+├── scripts/                 # Node 脚本（api / csv / excel / utils / update / test 运行器）
+├── test/                    # 单元测试（*.test.js）
 ├── doc/                     # 规范文档（h0/intl + 特殊项目 doc/{project}/）
 ├── logs/                    # 任务日志（每次操作一个子目录）
 ├── .env.json                # 环境配置（项目 / token / 租户）

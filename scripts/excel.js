@@ -35,6 +35,9 @@ function promptsToRows(prompts) {
 function generateExcel(prompts, outputPath, sheetName = '多语言导出') {
   const rows = promptsToRows(prompts);
   const ws = XLSX.utils.json_to_sheet(rows, { header: COLUMNS.map(c => c.key) });
+  COLUMNS.forEach((c, i) => {
+    ws[XLSX.utils.encode_cell({ r: 0, c: i })] = { t: 's', v: c.header };
+  });
 
   ws['!cols'] = COLUMNS.map(c => ({ wch: c.width }));
 
