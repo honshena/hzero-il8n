@@ -2,6 +2,10 @@
   "name": "hzero-il8n",
   "version": "1.1.0",
   "description": "h0 平台多语言管理 skill",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/honshena/hzero-il8n.git"
+  },
   "main": "index.js",
   "directories": {
     "doc": "doc"

@@ -1,19 +1,26 @@
 @echo off
+setlocal enabledelayedexpansion
 REM hzero-il8n skill setup script
-REM Copies commands to opencode commands directory
+REM Copies commands to AI tool command directories (opencode + Claude Code if present)
 
 set SKILL_DIR=%~dp0
-set COMMANDS_DIR=%USERPROFILE%\.config\opencode\commands
+set SOURCE=%SKILL_DIR%commands\hzero-il8n-*.md
 
 echo Setting up hzero-il8n skill...
 
-REM Create commands directory if not exists
-if not exist "%COMMANDS_DIR%" (
-    mkdir "%COMMANDS_DIR%"
-)
+REM opencode (default)
+set TARGET=%USERPROFILE%\.config\opencode\commands
+if not exist "!TARGET!" mkdir "!TARGET!"
+copy /Y "%SOURCE%" "!TARGET!" >nul
+echo Copied to: !TARGET!
 
-REM Copy command files
-copy /Y "%SKILL_DIR%commands\hzero-il8n-*.md" "%COMMANDS_DIR%"
+REM Claude Code (if installed)
+if exist "%USERPROFILE%\.claude" (
+  set TARGET=%USERPROFILE%\.claude\commands
+  if not exist "!TARGET!" mkdir "!TARGET!"
+  copy /Y "%SOURCE%" "!TARGET!" >nul
+  echo Copied to: !TARGET!
+)
 
 echo.
 echo Setup complete! Commands registered:
@@ -25,5 +32,8 @@ echo   /hzero-il8n-check     - Check code for i18n issues
 echo   /hzero-il8n-translate - Translate i18n entries
 echo   /hzero-il8n-export    - Export to Excel/CSV
 echo   /hzero-il8n-import    - Import from Excel/CSV
+echo   /hzero-il8n-update    - Check for skill updates
 echo.
-echo Please restart opencode to use the commands.
+echo Restart your AI tool to use the commands.
+echo Tip: after "git pull" updates, re-run this script to refresh commands.
+endlocal

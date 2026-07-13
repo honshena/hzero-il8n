@@ -7,6 +7,8 @@ description: Use when working with hzero platform i18n - checking issues, transl
 
 h0 平台多语言管理工具。支持查询、新增、修改、删除多语言条目，AI 翻译，代码多语言问题检查，以及生成 Excel/CSV 文件。
 
+> **每日首次使用本 skill 前，自动执行更新检查（每天一次，详见「每日更新检查」）。**
+
 ## When to Use
 
 - 需要管理 h0 平台多语言配置时
@@ -43,6 +45,7 @@ setup.bat
 | `/hzero-il8n-translate` | AI 翻译未翻译条目 | promptKey, 目标语言 |
 | `/hzero-il8n-export` | 生成 Excel/CSV | promptKey, 格式(xlsx/csv) |
 | `/hzero-il8n-import` | 从文件导入 | 文件路径 |
+| `/hzero-il8n-update` | 检查 skill 版本更新 | 分支(可选,默认master) |
 
 ## Environment Setup
 
@@ -108,6 +111,36 @@ if (!result.valid) {
   // 要求用户提供新 token
 }
 ```
+
+## 每日更新检查
+
+**每天首次使用本 skill 时，必须先执行每日更新检查（每天仅一次）：**
+
+```javascript
+const { checkDailyUpdate } = require('./scripts/update');
+const r = await checkDailyUpdate();  // 默认 master 分支
+```
+
+或直接运行：`node scripts/update.js --daily`
+
+返回 `action` 决定后续行为：
+
+| action | 含义 | AI 行为 |
+|--------|------|---------|
+| `skip-already-checked` | 今日已检查过 | 不提示，直接继续用户任务 |
+| `up-to-date` | 已是最新 | 不提示，直接继续 |
+| `skip-skipped-version` | 有更新但用户已跳过该版本 | 不提示，直接继续 |
+| `update-available` | 发现新版本 | 用 `question` 工具提示用户选择 |
+| `check-failed` | 检查失败（网络等） | 仅提示用户检查失败，不阻塞，直接继续用户任务（今日不再检查） |
+
+检查状态记录在 `cache.json`（`lastCheckDate` / `skippedVersion`）。`checkDailyUpdate` 在执行当天首次检查时即写入 `lastCheckDate`，**无论成功或失败当天都不再重复检查**。
+
+**`update-available` 时的三个选项：**
+- **立即更新**：执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1`（或 `setup.bat`）重新注册命令（新增/修改的命令才会生效），提示用户重启 AI 工具
+- **跳过此版本**：运行 `node scripts/update.js --skip <latest>` 记录跳过，本次不再提示（直到出现更新的版本）
+- **稍后再说**：本次不更新，明天首次使用时再次提示
+
+`cache.json` 为本地文件（已加入 `.gitignore`），不应提交到仓库。
 
 ## Task Management
 
@@ -345,5 +378,6 @@ const all = await api.getPromptList({ promptKey: 'hskp.platform', size: 0 });
 - `scripts/utils.js`: 工具函数
 - `scripts/excel.js`: Excel 生成/解析
 - `scripts/csv.js`: CSV 生成/解析
+- `scripts/update.js`: 版本更新检查
 - `doc/h0.md`: h0 平台规范
 - `doc/intl.md`: h0 多语言规范
