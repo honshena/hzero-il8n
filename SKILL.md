@@ -227,6 +227,15 @@ digraph workflow {
 }
 ```
 
+**每步打勾确认（严格按顺序，未确认不得进入下一步）：**
+
+- [ ] Step 1：创建 taskId 和目录 — 完成后输出 `✓ Step 1 完成`
+- [ ] Step 2：生成 data.json — 完成后输出 `✓ Step 2 完成`
+- [ ] Step 3：展示 data.json 完整内容给用户审批 — 完成后输出 `✓ Step 3 完成`
+- [ ] Step 4：用户确认（question 工具）— 完成后输出 `✓ Step 4 完成`
+- [ ] Step 5：执行操作 — 完成后输出 `✓ Step 5 完成`
+- [ ] Step 6：写入 result.json — 完成后输出 `✓ Step 6 完成`
+
 **Step 1:** 必须先调用 `generateTaskId()` 创建 taskId，再调用 `createTaskDir()` 创建目录。
 
 **Step 2:** 将所有待执行的操作写入 `{taskId}/data.json`，包括：
@@ -289,6 +298,7 @@ digraph workflow {
 - 未经用户明确要求就调用 deletePrompt
 - 批量删除多语言条目（必须逐条审批）
 - **先新增平台再修改代码（必须先修改代码再新增平台）**
+- 未在每步完成后打勾确认就进入下一步
 
 ## Code Check (check)
 
@@ -297,6 +307,23 @@ digraph workflow {
 - 未使用的 key（代码中未引用）
 - 翻译缺失（promptConfigs 缺少某些语言）
 - code 格式违规
+- 英文大小写规范（见下）
+
+### 英文大小写规范
+
+检查 `en_US` 值的大小写是否符合以下规则，发现问题需在 data.json 中列出当前值与建议值。
+
+**标题类（Title Case — 每个英文单词首字母大写）：**
+- 适用：页面标题、弹窗/抽屉标题、表格列标题、分区标题、按钮、菜单项、标签页、面包屑文字
+- 判断依据：promptCode 含 `title`/`header`/`column`/`button`/`tab`/`menu`/`breadcrumb` 等关键词，或上下文为短词组（≤5 词、无常句结构）
+- 示例：`Create User` ✓ / `Create user` ✗ / `create user` ✗
+
+**描述类（Sentence Case — 仅句首及专有名词大写）：**
+- 适用：帮助信息、提示语、占位符、说明性描述、完整句子
+- 判断依据：上下文为完整句子或长描述，或 promptCode 含 `tip`/`help`/`placeholder`/`description`/`message` 等关键词
+- 示例：`Please enter your username to log in.` ✓ / `Please Enter Your Username To Log In.` ✗
+
+**例外：** 专有名词（产品名）、缩写（API/URL/ID）、品牌名保持原大写；占位符 `{user}` 等不受规则影响。无法确定归属时，按上下文语义判断并向用户说明理由。
 
 注意：**只有 `hzero.common` 是自动加载的**，项目自定义的 common promptKey（如 `hskp.common`）需要在 `formatterCollections` 的 `code` 数组中显式声明。
 
