@@ -93,3 +93,4 @@ code 组成规则为 `{promptKey}.{promptCode}`
 - 使用 `formatterCollections` 时必须引入 Loading 组件：`import Loading from 'components/skeleton-loading/loading'`
 - 多语言 code 不要太长，影响代码阅读
 - 新增多语言时必须先检查是否已存在
+- **`intl.get` 不能在组件/函数外直接调用**：模块顶层（如顶层 `const` 常量、列定义）的 `intl.get` 会在多语言加载前执行，只能拿到默认值。改为函数或 getter，组件使用时再调用

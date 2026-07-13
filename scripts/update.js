@@ -38,6 +38,7 @@ function compareSemver(a, b) {
   return 0;
 }
 
+// 强制检查：始终联网，不读不写 cache。手动 /hzero-il8n-update 命令用。
 async function checkUpdate(branch = 'master') {
   const repoUrl = pkg.repository && (pkg.repository.url || pkg.repository);
   const repo = parseRepo(repoUrl);
@@ -47,6 +48,15 @@ async function checkUpdate(branch = 'master') {
   const current = pkg.version;
   const latest = remote.version;
   return { current, latest, hasUpdate: compareSemver(current, latest) < 0, remoteUrl: url, branch };
+}
+
+// 强制检查：不读 cache（始终联网，不判断今天是否已检查过），但写入 lastCheckDate 标记今日已检查。手动命令用。
+async function checkForceUpdate(branch = 'master') {
+  const cache = readCache();
+  cache.updateCheck = cache.updateCheck || {};
+  cache.updateCheck.lastCheckDate = todayStr();
+  writeCache(cache);
+  return await checkUpdate(branch);
 }
 
 function todayStr() {
@@ -65,11 +75,12 @@ function writeCache(cache) {
   fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2), 'utf-8');
 }
 
-async function checkDailyUpdate(branch = 'master', force = false) {
+// 每日自动检查：cache-first，读写 cache，判断今天是否已检查。仅此函数管理 cache。
+async function checkDailyUpdate(branch = 'master') {
   const cache = readCache();
   cache.updateCheck = cache.updateCheck || {};
   const today = todayStr();
-  if (!force && cache.updateCheck.lastCheckDate === today) {
+  if (cache.updateCheck.lastCheckDate === today) {
     return { action: 'skip-already-checked', reason: '今日已检查过更新' };
   }
   cache.updateCheck.lastCheckDate = today;
@@ -97,7 +108,7 @@ function skipVersion(version) {
   return { skipped: version };
 }
 
-module.exports = { checkUpdate, checkDailyUpdate, skipVersion, compareSemver, parseRepo, readCache, writeCache };
+module.exports = { checkUpdate, checkForceUpdate, checkDailyUpdate, skipVersion, compareSemver, parseRepo, readCache, writeCache };
 
 if (require.main === module) {
   const args = process.argv.slice(2);
@@ -106,11 +117,11 @@ if (require.main === module) {
   if (args[0] === '--skip') {
     if (!args[1]) fail(new Error('缺少版本号: --skip <version>'));
     ok(skipVersion(args[1]));
-  } else if (args[0] === '--force') {
-    checkDailyUpdate(args[1] || 'master', true).then(ok).catch(fail);
+  } else if (args[0] === '--daily') {
+    // cache-first，每日自动检查用
+    checkDailyUpdate(args[1] || 'master').then(ok).catch(fail);
   } else {
-    // 默认 cache-first（今日已检查则不调用网络）；--daily 为别名
-    const branch = args[0] === '--daily' ? (args[1] || 'master') : (args[0] || 'master');
-    checkDailyUpdate(branch, false).then(ok).catch(fail);
+    // 默认：强制检查（不读 cache，始终联网，写入 lastCheckDate），手动命令用
+    checkForceUpdate(args[0] || 'master').then(ok).catch(fail);
   }
 }

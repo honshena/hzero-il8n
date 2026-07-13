@@ -55,6 +55,7 @@ setup.bat
 {
   "projects": {
     "项目名": {
+      "defaultLanguage": "zh_CN",
       "environments": {
         "dev": {
           "host": "http://开发环境地址",
@@ -71,6 +72,15 @@ setup.bat
 ```
 
 **Token 要求：** 必须有 0 租户平台层权限。
+
+### 默认语言探测（defaultLanguage）
+
+配置项目时，**AI 自行探索项目源码**，抽样读取页面/组件文件中的 `intl.get(...).d('...')` 调用，统计 `.d()` 默认值的中英文占比，推断默认语言：
+
+- 抽样范围：项目源码目录（如 `src/`）下的页面/组件 `.js`/`.jsx`/`.tsx` 文件，跳过 `node_modules`/`dist`/`.umi` 等
+- 判定：默认值含中文（CJK）记为中文，否则记为英文；中文占比高 -> `zh_CN`，英文占比高 -> `en_US`
+- `defaultLanguage` 用于新增条目时 `.d()` 默认值的语言、检查/翻译时的主语言等
+- 将结果存入 `.env.json` 对应项目的 `defaultLanguage` 字段，并向用户说明推断依据（抽样数量与占比）
 
 ### 项目关联（fileProjectMap）
 
@@ -114,15 +124,16 @@ if (!result.valid) {
 
 ## 每日更新检查
 
-**每天首次使用本 skill 时，必须先执行每日更新检查（每天仅一次）。检查为 cache-first：先读 `cache.json` 的 `lastCheckDate`，若为今天则直接返回 `skip-already-checked`，不调用网络接口；仅当今日未检查过、或用户明确要求重新检查时才调用接口。**
+**每天首次使用本 skill 时，必须先执行每日更新检查（每天仅一次）。检查为 cache-first：先读 `cache.json` 的 `lastCheckDate`，若为今天则直接返回 `skip-already-checked`，不调用网络接口；仅当今日未检查过时才调用接口。**（用户手动要求重新检查时用强制检查，见下文。）
+
+> 手动执行 `/hzero-il8n-update` 命令为**强制检查**（`node scripts/update.js`，始终联网，不读 cache 判断是否跳过），但检查后写入 `lastCheckDate`；本节 cache-first（读 cache 判断是否跳过）仅适用于每日自动检查。
 
 ```javascript
 const { checkDailyUpdate } = require('./scripts/update');
-const r = await checkDailyUpdate();                // 默认 master 分支，cache-first
-const r2 = await checkDailyUpdate('master', true); // force：绕过缓存强制重新检查
+const r = await checkDailyUpdate();        // 默认 master 分支，cache-first（每日自动检查用）
 ```
 
-或直接运行：`node scripts/update.js`（cache-first）/ `node scripts/update.js --force`（强制重新检查）
+或直接运行：`node scripts/update.js --daily`（cache-first，每日自动检查）/ `node scripts/update.js`（强制检查，手动命令用，不读 cache 但写入 lastCheckDate）
 
 返回 `action` 决定后续行为：
 
@@ -141,7 +152,7 @@ const r2 = await checkDailyUpdate('master', true); // force：绕过缓存强制
 - **跳过此版本**：运行 `node scripts/update.js --skip <latest>` 记录跳过，本次不再提示（直到出现更新的版本）
 - **稍后再说**：本次不更新，明天首次使用时再次提示
 
-**用户明确要求重新检查时**（如「重新检查更新」「强制检查」）：调用 `checkDailyUpdate(branch, true)` 或 `node scripts/update.js --force`，绕过缓存强制调用接口。
+**用户明确要求重新检查时**（如「重新检查更新」「强制检查」）：运行 `node scripts/update.js [分支]`（强制检查，不读写 cache，始终联网）。
 
 `cache.json` 为本地文件（已加入 `.gitignore`），不应提交到仓库。
 
@@ -344,6 +355,7 @@ digraph workflow {
 - 翻译缺失（promptConfigs 缺少某些语言）
 - code 格式违规
 - 英文大小写规范（见下）
+- intl.get 作用域（不能在组件外直接调用，见下）
 
 ### 英文大小写规范
 
@@ -360,6 +372,43 @@ digraph workflow {
 - 示例：`Please enter your username to log in.` ✓ / `Please Enter Your Username To Log In.` ✗
 
 **例外：** 专有名词（产品名）、缩写（API/URL/ID）、品牌名保持原大写；占位符 `{user}` 等不受规则影响。无法确定归属时，按上下文语义判断并向用户说明理由。
+
+### intl.get 作用域检查
+
+`intl.get()` 不能在组件/函数外直接调用（模块顶层）。文件 import 时常量中的 `intl.get` 会在多语言数据加载前执行，此时只能拿到 `.d()` 默认值或 key，而非真实翻译。
+
+**违规（模块顶层，import 时即执行）：**
+
+```javascript
+const COLUMNS = [
+  { title: intl.get('hsop.common.name').d('名称') },
+  { title: intl.get('hsop.common.operate').d('操作') },
+];
+```
+
+**建议改为函数或 getter，组件使用时再调用：**
+
+```javascript
+const getColumns = () => [
+  { title: intl.get('hsop.common.name').d('名称') },
+  { title: intl.get('hsop.common.operate').d('操作') },
+];
+```
+
+检查时识别模块作用域（顶层 `const`/`let`/`var`、对象/数组字面量内、非函数体）的 `intl.get` 调用，列入 data.json 并建议改为函数/getter。
+
+### 检查项选择（多选）
+
+**检查开始前**，先用 `question` 工具（`multiple: true`）列出所有检查项，让用户**多选**要执行哪些检查：
+
+- 硬编码字符串
+- 未注册的 key（平台上不存在）
+- 翻译缺失（promptConfigs 缺少某些语言）
+- code 格式违规
+- 英文大小写规范
+- intl.get 作用域
+
+仅对选中的项执行检查，未选中的跳过。检查完成后将所有发现问题写入 data.json 并完整展示给用户。
 
 注意：**只有 `hzero.common` 是自动加载的**，项目自定义的 common promptKey（如 `hskp.common`）需要在 `formatterCollections` 的 `code` 数组中显式声明。
 

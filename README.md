@@ -141,30 +141,30 @@ Codex 用户用自然语言触发等价操作。
 
 提供 `/hzero-il8n-update` 命令与 `scripts/update.js` 脚本，通过 `package.json` 的 `version`（语义化版本）与 GitHub 远程版本对比。
 
-**所有检查默认 cache-first**：先读 `cache.json` 的 `lastCheckDate`，若今日已检查过则不调用网络接口，直接返回 `skip-already-checked`；仅当今日未检查过、或用户明确要求重新检查时才调用接口。
+**两种检查模式：**
+- **手动 `/hzero-il8n-update` 命令：强制检查**（`node scripts/update.js`），不读 cache（始终联网），检查后写入 `lastCheckDate`，不判断今天是否已检查过
+- **每日自动检查（`checkDailyUpdate`）：cache-first**，先读 `cache.json` 的 `lastCheckDate`，今日已查则不调用网络
 
 **命令方式**（注册命令后）：
 ```
-/hzero-il8n-update          # 默认 master，cache-first
-/hzero-il8n-update dev      # 指定其他分支
-/hzero-il8n-update 重新检查  # AI 识别后改用 --force 强制重新检查
+/hzero-il8n-update          # 默认强制检查（master）
+/hzero-il8n-update dev      # 指定其他分支（同样强制）
 ```
 
 **脚本方式**（skill 目录下）：
 ```powershell
-node scripts/update.js              # cache-first：今日已查则不调用网络
-node scripts/update.js dev          # 指定其他分支
-node scripts/update.js --force      # 强制重新检查（绕过缓存）
+node scripts/update.js              # 强制检查（命令默认行为，不读 cache，始终联网，写入 lastCheckDate）
+node scripts/update.js --daily      # cache-first（每日自动检查用）
 node scripts/update.js --skip <ver> # 跳过指定版本
 ```
 
-返回 `action`：`skip-already-checked`（今日已查，不调用网络）/ `up-to-date`（最新）/ `skip-skipped-version`（已跳过该版本）/ `update-available`（有新版）/ `check-failed`（失败，仅提示，不阻塞）。`update-available` 时向用户确认后执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1` 重新注册命令，最后重启 AI 工具使新 SKILL.md / 命令生效。
+**强制检查**（`node scripts/update.js`）返回 `{ current, latest, hasUpdate }`，`hasUpdate` 为 true 时进入更新流程。**cache-first 检查**（`--daily`）返回 `action`：`skip-already-checked`（今日已查）/ `up-to-date`（最新）/ `skip-skipped-version`（已跳过该版本）/ `update-available`（有新版）/ `check-failed`（失败，仅提示，不阻塞）。`hasUpdate` / `update-available` 时向用户确认后执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1` 重新注册命令，最后重启 AI 工具使新 SKILL.md / 命令生效。
 
 脚本从 `package.json` 的 `repository.url` 推导远程地址（已配置为 honshena/hzero-il8n）。若 404，尝试其他分支名或检查仓库地址。
 
 ### 每日自动检查
 
-每天首次使用 skill 时自动触发一次上述 cache-first 检查（`checkDailyUpdate`），当天不再重复，**检查失败也仅提示一次、当天不再重试**。`--daily` 为默认 cache-first 检查的别名。`cache.json` 为本地文件（已加入 `.gitignore`，不提交）。
+每天首次使用 skill 时自动触发一次 cache-first 检查（`checkDailyUpdate` / `node scripts/update.js --daily`），当天不再重复，**检查失败也仅提示一次、当天不再重试**。`cache.json` 为本地文件（已加入 `.gitignore`，不提交）。
 
 ## 目录结构
 
