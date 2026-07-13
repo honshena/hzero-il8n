@@ -1,0 +1,24 @@
+{
+  "action": "delete-and-export",
+  "delete": {
+    "file": "D:\\Mine\\Projects\\Work\\hskp-front-console\\packages\\hskp-front-console-platform\\src\\pages\\DomainManagement\\index.tsx",
+    "line": 251,
+    "key": "hskp.platform.domainManagement.view.tab.systemDomain",
+    "promptId": "=7PmcnhSOWB7YwacUl1t2vUy3dKXd7rDP6XCxQ-BnZNE==",
+    "objectVersionNumber": 1,
+    "_token": "/uqs6jADKr9uFI6IYFiUG9ba923D7jvuavvUhhaw8zHpkKe/vZ5hScxtDy2/zQEYxNjbLTEHwjE7uZXuimN8Fw3MlIHQxu/We8H32G5IaYs=",
+    "description": "系统域名",
+    "langDescription": "中文(简体)"
+  },
+  "export": {
+    "file": "D:\\Mine\\Projects\\Work\\hskp-front-console\\packages\\hskp-front-console-platform\\src\\pages\DomainManagement\\stores.ts",
+    "modifiedKeys": [
+      {
+        "promptKey": "hskp.common",
+        "promptCode": "enterpriseName",
+        "zh_CN": "企业名称",
+        "en_US": "Enterprise Name"
+      }
+    ]
+  }
+}

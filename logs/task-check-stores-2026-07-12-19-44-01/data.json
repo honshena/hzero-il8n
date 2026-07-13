@@ -1,0 +1,13 @@
+{
+  "action": "check",
+  "file": "D:\\Mine\\Projects\\Work\\hskp-front-console\\packages\\hskp-front-console-platform\\src\\pages\\DomainManagement\\stores.ts",
+  "issues": [
+    {
+      "line": 100,
+      "type": "hardcoded",
+      "current": "label: 'Enterprise Name'",
+      "suggestion": "label: intl.get('hskp.common.enterpriseName').d('Enterprise Name')",
+      "note": "fields 中 line 157 已正确使用 intl.get，queryFields 中缺少"
+    }
+  ]
+}

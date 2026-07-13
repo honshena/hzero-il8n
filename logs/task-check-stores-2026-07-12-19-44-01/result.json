@@ -1,0 +1,17 @@
+{
+  "action": "check-and-fix",
+  "file": "D:\\Mine\\Projects\\Work\\hskp-front-console\\packages\\hskp-front-console-platform\\src\\pages\\DomainManagement\\stores.ts",
+  "fixed": [
+    {
+      "line": 100,
+      "type": "hardcoded",
+      "before": "label: 'Enterprise Name'",
+      "after": "label: intl.get('hskp.common.enterpriseName').d('Enterprise Name')"
+    }
+  ],
+  "platformCheck": {
+    "key": "hskp.common.enterpriseName",
+    "exists": true,
+    "action": "none"
+  }
+}
