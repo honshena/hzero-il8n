@@ -399,8 +399,9 @@ const getColumns = () => [
 
 ### 检查项选择（多选）
 
-**检查开始前**，先用 `question` 工具（`multiple: true`）列出所有检查项，让用户**多选**要执行哪些检查：
+**检查开始前**，先用 `question` 工具（`multiple: true`）列出检查项（首个为「全部」），让用户**多选**要执行哪些检查：
 
+- 全部（执行以下所有检查）
 - 硬编码字符串
 - 未注册的 key（平台上不存在）
 - 翻译缺失（promptConfigs 缺少某些语言）
@@ -408,7 +409,7 @@ const getColumns = () => [
 - 英文大小写规范
 - intl.get 作用域
 
-仅对选中的项执行检查，未选中的跳过。检查完成后将所有发现问题写入 data.json 并完整展示给用户。
+用户选「全部」时执行所有检查项；否则仅对选中的项执行，未选中的跳过。检查完成后将所有发现问题写入 data.json 并完整展示给用户。
 
 注意：**只有 `hzero.common` 是自动加载的**，项目自定义的 common promptKey（如 `hskp.common`）需要在 `formatterCollections` 的 `code` 数组中显式声明。
 
