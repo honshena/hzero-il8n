@@ -123,9 +123,14 @@ async function getPromptList(params = {}) {
   return request('GET', `/hpfm/v1/prompts/page-list${query}`, null, projectName, environmentName);
 }
 
-async function getPromptDetail(promptKey, promptCode, lang = 'zh_CN', projectName = null, environmentName = null) {
+async function getPromptDetail(params = {}) {
+  const projectName = params.project || null;
+  const environmentName = params.environment || null;
   const config = getConfig(projectName, environmentName);
-  const tenantId = config.tenantId || 0;
+  const tenantId = params.tenantId || config.tenantId || 0;
+  const lang = params.lang || 'zh_CN';
+  const promptKey = params.promptKey || '';
+  const promptCode = params.promptCode || '';
   const query = `?lang=${lang}&promptCode=${encodeURIComponent(promptCode)}&promptKey=${encodeURIComponent(promptKey)}&tenantId=${tenantId}`;
   return request('GET', `/hpfm/v1/prompts/detail${query}`, null, projectName, environmentName);
 }

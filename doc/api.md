@@ -55,8 +55,19 @@
 | 方法 | `GET` |
 | 路径 | `/hpfm/v1/prompts/detail` |
 | 用途 | 按 promptKey + promptCode + lang 查询单条多语言详情 |
-| 参数 | `promptKey`(必填), `promptCode`(必填), `lang`(默认 zh_CN), `tenantId` |
+| 参数 | 对象：`{ promptKey`(必填), `promptCode`(必填), `lang`(默认 zh_CN), `tenantId`, `project`, `environment` `}` |
 | 返回 | 单条多语言对象 |
+
+调用示例：
+```javascript
+const detail = await api.getPromptDetail({
+  promptKey: 'hskp.test',
+  promptCode: 'hello',
+  lang: 'zh_CN',
+  project: 'console',
+  environment: 'dev',
+});
+```
 
 > **promptConfigs 说明**：返回的 `promptConfigs` 是 `{ 语言代码: 翻译值 }` 对象，**仅包含数据库中实际存在行的语言**（值为空字符串 `""` 的行也算存在，表示语言行已建但翻译未填）。未在数据库建行的语言**不会**出现在 `promptConfigs` 中。因此判断某语言翻译是否缺失：看该语言 key 是否**不在** `promptConfigs` 中，而非看值是否为空。若需确认，可用一个肯定不存在的语言（如 `ja_JP`）查询 detail，对比 `promptConfigs` 出现的 key 即为实际有行的语言。
 
