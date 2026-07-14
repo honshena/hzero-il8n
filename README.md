@@ -59,7 +59,7 @@ clone 后在该目录运行 `npm install`。
 
 ### 3. 注册 `/hzero-il8n-*` 命令（可选）
 
-`commands/` 下的 9 个 `.md` 是斜杠命令定义，需复制到各工具的命令目录才生效：
+`commands/` 下的 10 个 `.md` 是斜杠命令定义，需复制到各工具的命令目录才生效：
 
 | 工具 | 全局命令目录 |
 |------|------------|
@@ -121,6 +121,7 @@ Token 必须有 0 租户平台层权限。`fileProjectMap` 记录文件路径与
 | `/hzero-il8n-export` | 导出 Excel/CSV | promptKey, 格式 |
 | `/hzero-il8n-import` | 从 Excel/CSV 导入 | 文件路径 |
 | `/hzero-il8n-update` | 检查 skill 版本更新 | 分支（可选，默认 master） |
+| `/hzero-il8n-release` | 发布新版本（变更→changelog→审批→提交→push） | 版本号（可选） |
 
 Codex 用户用自然语言触发等价操作。
 

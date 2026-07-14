@@ -33,6 +33,7 @@ echo   /hzero-il8n-translate - Translate i18n entries
 echo   /hzero-il8n-export    - Export to Excel/CSV
 echo   /hzero-il8n-import    - Import from Excel/CSV
 echo   /hzero-il8n-update    - Check for skill updates
+echo   /hzero-il8n-release   - Release: changelog + commit + push
 echo.
 echo Restart your AI tool to use the commands.
 echo Tip: after "git pull" updates, re-run this script to refresh commands.

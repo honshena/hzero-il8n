@@ -31,6 +31,7 @@ Write-Host "  /hzero-il8n-translate - Translate i18n entries"
 Write-Host "  /hzero-il8n-export    - Export to Excel/CSV"
 Write-Host "  /hzero-il8n-import    - Import from Excel/CSV"
 Write-Host "  /hzero-il8n-update    - Check for skill updates"
+Write-Host "  /hzero-il8n-release   - Release: changelog + commit + push"
 Write-Host ""
 Write-Host "Restart your AI tool to use the commands." -ForegroundColor Yellow
 Write-Host "Tip: after 'git pull' updates, re-run this script to refresh commands." -ForegroundColor Yellow

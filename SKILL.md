@@ -46,6 +46,7 @@ setup.bat
 | `/hzero-il8n-export` | 生成 Excel/CSV | promptKey, 格式(xlsx/csv) |
 | `/hzero-il8n-import` | 从文件导入 | 文件路径 |
 | `/hzero-il8n-update` | 检查 skill 版本更新 | 分支(可选,默认master) |
+| `/hzero-il8n-release` | 发布新版本（变更→changelog→审批→提交→push） | 版本号(可选) |
 
 ## Environment Setup
 
