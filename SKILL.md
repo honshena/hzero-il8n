@@ -391,6 +391,7 @@ digraph workflow {
 - code 格式违规
 - 英文大小写规范（见下）
 - intl.get 作用域（不能在组件外直接调用，见下）
+- formatterCollections 使用规范（见下）
 
 ### 英文大小写规范
 
@@ -432,6 +433,28 @@ const getColumns = () => [
 
 检查时识别模块作用域（顶层 `const`/`let`/`var`、对象/数组字面量内、非函数体）的 `intl.get` 调用，列入 data.json 并建议改为函数/getter。
 
+### formatterCollections 使用检查
+
+检查 `formatterCollections` 是否正确使用，按项目类型分两种模式（操作前先读 `doc/{project}/` 确认）：
+
+**标准 h0 项目**（见 `doc/h0.md`）：
+- 路由最外层页面**必须**用 `formatterCollections` 包裹，否则多语言不加载
+- `code` 数组须包含页面用到的所有自定义 promptKey（如 `hskp.common`、`hskp.platform`）
+- `hzero.common` 自动加载，无需声明；项目自定义 common（如 `hskp.common`）**必须显式声明**
+- `code` 数组中声明了但页面未引用的 promptKey -> 提示冗余，建议移除
+- 页面引用了但 `code` 数组未声明的自定义 promptKey -> 提示缺失，建议补充
+- 必须引入 Loading 组件：`import Loading from 'components/skeleton-loading/loading'`，传 `loadingComponent: () => <Loading />`
+
+**开放平台等特殊项目**（见 `doc/openplatform/README.md`）：
+- 布局层 `src/layouts/index.js` 已全局加载，普通页面**不需要** `formatterCollections`
+- 仅当页面使用布局未加载的额外 promptKey 时才在页面级追加
+- 检查普通页面是否误用了 `formatterCollections`（冗余），或使用了未加载的 promptKey 却未追加
+
+**通用问题**：
+- `formatterCollections` 未包裹组件就导出
+- `code` 为空或未传
+- `code` 与页面实际 `intl.get` 的 promptKey 不匹配
+
 ### 检查项选择（多选）
 
 **检查开始前**，先用 `question` 工具（`multiple: true`）列出检查项（首个为「全部」），让用户**多选**要执行哪些检查：
@@ -443,6 +466,7 @@ const getColumns = () => [
 - code 格式违规
 - 英文大小写规范
 - intl.get 作用域
+- formatterCollections 使用规范
 
 用户选「全部」时执行所有检查项；否则仅对选中的项执行，未选中的跳过。检查完成后将所有发现问题写入 data.json，并**严格以列表逐条展示**（每条问题含位置/类型/当前值/建议值，不得用段落叙述或省略）。
 
