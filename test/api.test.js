@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { getConfig, getProjectByFilePath, getUserSelf } = require('../scripts/api');
+const { getConfig, getProjectByFilePath, getUserSelf, insertPrompt } = require('../scripts/api');
 
 const envPath = path.join(__dirname, '..', '.env.json');
 let backup = null;
@@ -97,5 +97,65 @@ test('request: 401 抛 TOKEN_EXPIRED', async () => {
     env.projects.mock.environments.dev.host = mockUrl;
     fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
     await new Promise((r) => deny.close(r));
+  }
+});
+
+test('request: 平台错误码 error.db.duplicateKey 提取为 API_ERROR', async () => {
+  const dup = http.createServer((req, res) => {
+    res.writeHead(400, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ code: 'error.db.duplicateKey', message: 'error.db.duplicateKey' }));
+  });
+  await new Promise((r) => dup.listen(0, '127.0.0.1', r));
+  const dupUrl = `http://127.0.0.1:${dup.address().port}`;
+  const env = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+  env.projects.mock.environments.dev.host = dupUrl;
+  fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+  try {
+    await assert.rejects(
+      () => insertPrompt({ promptKey: 'hsop.common', promptCode: 'test', promptConfigs: { zh_CN: '测试' } }),
+      /API_ERROR\[error\.db\.duplicateKey\]/
+    );
+  } finally {
+    env.projects.mock.environments.dev.host = mockUrl;
+    fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+    await new Promise((r) => dup.close(r));
+  }
+});
+
+test('request: error.permission.accessTokenExpire 抛 TOKEN_EXPIRED', async () => {
+  const expired = http.createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ code: 'error.permission.accessTokenExpire', failed: true, message: 'token expired' }));
+  });
+  await new Promise((r) => expired.listen(0, '127.0.0.1', r));
+  const expiredUrl = `http://127.0.0.1:${expired.address().port}`;
+  const env = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+  env.projects.mock.environments.dev.host = expiredUrl;
+  fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+  try {
+    await assert.rejects(() => getUserSelf(), /TOKEN_EXPIRED/);
+  } finally {
+    env.projects.mock.environments.dev.host = mockUrl;
+    fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+    await new Promise((r) => expired.close(r));
+  }
+});
+
+test('request: 响应 failed:true 视为错误', async () => {
+  const failedSrv = http.createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ failed: true, code: 'error.something', message: 'something failed' }));
+  });
+  await new Promise((r) => failedSrv.listen(0, '127.0.0.1', r));
+  const failedUrl = `http://127.0.0.1:${failedSrv.address().port}`;
+  const env = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+  env.projects.mock.environments.dev.host = failedUrl;
+  fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+  try {
+    await assert.rejects(() => getUserSelf(), /API_ERROR\[error\.something\]/);
+  } finally {
+    env.projects.mock.environments.dev.host = mockUrl;
+    fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+    await new Promise((r) => failedSrv.close(r));
   }
 });

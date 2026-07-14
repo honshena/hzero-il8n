@@ -69,10 +69,32 @@ async function request(method, urlPath, body = null, projectName = null, environ
       if (e.response.status === 401) {
         throw new Error('TOKEN_EXPIRED: Token 已过期，请提供新的 token');
       }
-      const text = typeof e.response.data === 'string' ? e.response.data : JSON.stringify(e.response.data);
+      const data = e.response.data;
+      const text = typeof data === 'string' ? data : JSON.stringify(data);
+      // 提取平台错误码，便于上层按码处理（见 doc/api.md 错误码表）
+      if (data && typeof data === 'object') {
+        const code = data.code || data.message || null;
+        if (code === 'error.permission.accessTokenExpire') {
+          throw new Error('TOKEN_EXPIRED: Token 已过期，请提供新的 token');
+        }
+        if (code && typeof code === 'string' && code.startsWith('error.')) {
+          throw new Error(`API_ERROR[${code}]: ${text}`);
+        }
+      }
       throw new Error(`API 请求失败 (${e.response.status}): ${text}`);
     }
     throw e;
+  }
+  // 响应体 failed: true 也表示错误（HTTP 200 但业务失败）
+  if (response.data && typeof response.data === 'object' && response.data.failed === true) {
+    const code = response.data.code || response.data.message || null;
+    if (code === 'error.permission.accessTokenExpire') {
+      throw new Error('TOKEN_EXPIRED: Token 已过期，请提供新的 token');
+    }
+    if (code && typeof code === 'string' && code.startsWith('error.')) {
+      throw new Error(`API_ERROR[${code}]: ${JSON.stringify(response.data)}`);
+    }
+    throw new Error(`API 请求失败 (failed: true): ${JSON.stringify(response.data)}`);
   }
   if (response.status === 204) {
     return { success: true };

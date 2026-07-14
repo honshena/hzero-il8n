@@ -478,11 +478,12 @@ const all = await api.getPromptList({ promptKey: 'hskp.platform', size: 0 });
 
 ## File Reference
 
-- `scripts/api.js`: API 调用封装
+- `scripts/api.js`: API 调用封装（接口文档见 `doc/api.md`）
 - `scripts/utils.js`: 工具函数
 - `scripts/excel.js`: Excel 生成/解析
 - `scripts/csv.js`: CSV 生成/解析
 - `scripts/update.js`: 版本更新检查
 - `doc/h0.md`: h0 平台规范
 - `doc/intl.md`: h0 多语言规范
+- `doc/api.md`: h0 平台多语言接口文档（路径/参数/返回/错误码）
 - `doc/openplatform/README.md`: 开放平台多语言说明（特殊项目）
