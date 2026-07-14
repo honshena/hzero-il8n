@@ -446,6 +446,14 @@ const getColumns = () => [
 
 用户选「全部」时执行所有检查项；否则仅对选中的项执行，未选中的跳过。检查完成后将所有发现问题写入 data.json，并**严格以列表逐条展示**（每条问题含位置/类型/当前值/建议值，不得用段落叙述或省略）。
 
+### 检查完成后的选项
+
+检查完成、问题写入 data.json 并逐条展示后，用 `question` 工具让用户选择：
+
+- **确认修复**：按 data.json 中的修复方案执行全部修复（进入 Step 5 执行，Step 6 写 result.json + task.md 摘要）
+- **跳过**：不修复，结束任务
+- **要求 AI 修改**：由 AI 调整 data.json（如只保留部分问题、修改建议值）后再次展示审批，用户不直接编辑 data.json
+
 注意：**只有 `hzero.common` 是自动加载的**，项目自定义的 common promptKey（如 `hskp.common`）需要在 `formatterCollections` 的 `code` 数组中显式声明。
 
 ```javascript
