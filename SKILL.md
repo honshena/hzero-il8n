@@ -7,6 +7,8 @@ description: Use when working with hzero platform i18n - checking issues, transl
 
 h0 平台多语言管理工具。支持查询、新增、修改、删除多语言条目，AI 翻译，代码多语言问题检查，以及生成 Excel/CSV 文件。
 
+**所有回复默认使用中文。** data.json、task.md、错误提示、审批展示等均用中文。
+
 > **每日首次使用本 skill 前，自动执行更新检查（每天一次，详见「每日更新检查」）。**
 
 ## When to Use
