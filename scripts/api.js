@@ -131,6 +131,11 @@ async function getPromptDetail(promptKey, promptCode, lang = 'zh_CN', projectNam
 }
 
 async function updatePrompt(data, projectName = null, environmentName = null) {
+  const required = ['promptId', 'objectVersionNumber', '_token', 'promptKey', 'promptCode', 'lang', 'langDescription', 'tenantId', 'promptConfigs'];
+  const missing = required.filter((k) => data[k] === undefined || data[k] === null);
+  if (missing.length) {
+    throw new Error(`updatePrompt 缺失必填字段: ${missing.join(', ')}。请从 getPromptList 查询结果获取完整行记录（含 promptId/objectVersionNumber/_token/promptKey/promptCode/lang/langDescription/tenantId），详见 doc/api.md`);
+  }
   return request('PUT', '/hpfm/v1/prompts/update', data, projectName, environmentName);
 }
 

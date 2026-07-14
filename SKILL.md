@@ -493,6 +493,23 @@ const getColumns = () => [
 - **跳过**：不修复，结束任务
 - **要求 AI 修改**：由 AI 调整 data.json（如只保留部分问题、修改建议值）后再次展示审批，用户不直接编辑 data.json
 
+### 修复操作指引（按问题类型）
+
+确认修复后，按问题类型选择对应的修复方式：
+
+| 问题类型 | 修复方式 | 平台同步 |
+|----------|----------|----------|
+| 硬编码字符串 | 代码改为 `intl.get(key).d(默认值)` | 注册新 key：`insertPrompt`（先查平台确认不存在，再改代码，再 insert，再查询验证） |
+| 未注册的 key | 代码中 key 改名或保留 | 新 key：`insertPrompt`；改名的旧 key 若无其他引用可删除（需用户确认） |
+| 翻译缺失 | 无需改代码 | **`updatePrompt`**：从 getPromptList 取**完整行记录**（`promptId`/`objectVersionNumber`/`_token`/`promptKey`/`promptCode`/`lang`/`langDescription`/`tenantId`），`promptConfigs` 须包含**所有语言**（含已有+缺失），缺失必填字段会抛错。修改后用 `getPromptDetail` 验证 |
+| code 格式违规 | 代码中 promptCode 改名 | 旧 key 删除（需用户确认）+ 新 key `insertPrompt` |
+| 英文大小写规范 | 无需改代码 | `updatePrompt`：`promptConfigs` 中对应语言的值改为规范大小写 |
+| intl.get 作用域 | 代码顶层 const 改为函数/getter，JSX 改为调用 | 无 |
+| formatterCollections 使用规范 | 代码补 import / 包裹 HOC / 补 code 声明 | 无 |
+| .d() 默认值语言 | 代码中 `.d()` 默认值改为项目 defaultLanguage | 无（仅代码修改，不影响平台） |
+
+> **翻译缺失修复要点**：`updatePrompt` 的 `promptConfigs` 必须包含该 promptCode 的**全部语言**（不仅是缺失的那个），否则已存在的语言可能被清空。`lang`/`langDescription`/`tenantId` 等字段**必填**，缺失会抛错，须从 getPromptList 行记录完整传入。详见 `doc/api.md` 的 updatePrompt 条目。
+
 注意：**只有 `hzero.common` 是自动加载的**，项目自定义的 common promptKey（如 `hskp.common`）需要在 `formatterCollections` 的 `code` 数组中显式声明。
 
 ```javascript

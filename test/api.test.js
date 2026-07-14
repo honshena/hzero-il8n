@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { getConfig, getProjectByFilePath, getUserSelf, insertPrompt } = require('../scripts/api');
+const { getConfig, getProjectByFilePath, getUserSelf, insertPrompt, updatePrompt } = require('../scripts/api');
 
 const envPath = path.join(__dirname, '..', '.env.json');
 let backup = null;
@@ -157,5 +157,59 @@ test('request: 响应 failed:true 视为错误', async () => {
     env.projects.mock.environments.dev.host = mockUrl;
     fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
     await new Promise((r) => failedSrv.close(r));
+  }
+});
+
+test('updatePrompt: 缺失必填字段抛错', async () => {
+  await assert.rejects(
+    () => updatePrompt({
+      promptId: 'pid',
+      objectVersionNumber: 1,
+      _token: 'tk',
+      promptKey: 'hskp.test',
+      promptCode: 'hello',
+      promptConfigs: { zh_CN: '你好', en_US: 'Hello' },
+      // lang/langDescription/tenantId 缺失
+    }),
+    /缺失必填字段.*lang/
+  );
+});
+
+test('updatePrompt: 完整参数正确透传', async () => {
+  let receivedBody = null;
+  const srv = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      receivedBody = JSON.parse(body);
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(receivedBody));
+    });
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const srvUrl = `http://127.0.0.1:${srv.address().port}`;
+  const env = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+  env.projects.mock.environments.dev.host = srvUrl;
+  fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+  try {
+    await updatePrompt({
+      promptId: 'pid',
+      objectVersionNumber: 1,
+      _token: 'tk',
+      promptKey: 'hskp.test',
+      promptCode: 'hello',
+      lang: 'zh_CN',
+      langDescription: '中文(简体)',
+      tenantId: 0,
+      promptConfigs: { zh_CN: '你好', en_US: 'Hello' },
+    });
+    assert.strictEqual(receivedBody.lang, 'zh_CN');
+    assert.strictEqual(receivedBody.langDescription, '中文(简体)');
+    assert.strictEqual(receivedBody.tenantId, 0);
+    assert.deepStrictEqual(receivedBody.promptConfigs, { zh_CN: '你好', en_US: 'Hello' });
+  } finally {
+    env.projects.mock.environments.dev.host = mockUrl;
+    fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+    await new Promise((r) => srv.close(r));
   }
 });

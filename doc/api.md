@@ -46,6 +46,8 @@
 }
 ```
 
+> **语言行为**：列表按当前用户语言（由 token 对应用户的 `language` 字段决定，本 skill 固定发送 `Accept-Language: zh-CN`）返回每个 promptKey+promptCode 的**一行**记录，`lang` 字段反映该行语言（通常为 `zh_CN`）。同一 promptCode 的其他语言行不会在列表中返回，`promptConfigs` 也可能只含当前语言。如需查看某 promptCode 的**全部语言翻译**，使用 `getPromptDetail`。
+
 ### getPromptDetail - 查询单条详情
 
 | 项 | 值 |
@@ -55,6 +57,8 @@
 | 用途 | 按 promptKey + promptCode + lang 查询单条多语言详情 |
 | 参数 | `promptKey`(必填), `promptCode`(必填), `lang`(默认 zh_CN), `tenantId` |
 | 返回 | 单条多语言对象 |
+
+> **promptConfigs 说明**：返回的 `promptConfigs` 是 `{ 语言代码: 翻译值 }` 对象，**仅包含数据库中实际存在行的语言**（值为空字符串 `""` 的行也算存在，表示语言行已建但翻译未填）。未在数据库建行的语言**不会**出现在 `promptConfigs` 中。因此判断某语言翻译是否缺失：看该语言 key 是否**不在** `promptConfigs` 中，而非看值是否为空。若需确认，可用一个肯定不存在的语言（如 `ja_JP`）查询 detail，对比 `promptConfigs` 出现的 key 即为实际有行的语言。
 
 ### insertPrompt - 新增多语言
 
@@ -72,10 +76,29 @@
 |----|---|
 | 方法 | `PUT` |
 | 路径 | `/hpfm/v1/prompts/update` |
-| 用途 | 修改已有多语言条目 |
-| body | `{ promptId, objectVersionNumber, _token, promptConfigs: { zh_CN, en_US, ... }, description }` |
+| 用途 | 修改已有多语言条目（补充/修改某语言的翻译值） |
+| body | `{ promptId, objectVersionNumber, _token, promptKey, promptCode, promptConfigs: { zh_CN, en_US, ... }, lang, langDescription, tenantId, description }` |
 | 返回 | 修改后的多语言对象 |
 | 注意 | `promptId`/`objectVersionNumber`/`_token` 必须从 getPromptList 查询结果获取 |
+
+> **lang/langDescription/tenantId 必填**：HZERO update 接口要求携带这三个字段（来自 getPromptList 行记录）。`lang` 标识当前操作的源语言行，缺失时为已有 promptCode 补充新语言会触发 `error.db.duplicateKey`。`scripts/api.js` 的 `updatePrompt` **不自动补全**，缺失任一必填字段时直接抛错，调用方须从 getPromptList 行记录完整传入。
+
+调用示例（补充 en_US 翻译）：
+```javascript
+const record = (await api.getPromptList({ promptKey: 'hskp.test', promptCode: 'hello', size: 1 })).content[0];
+await api.updatePrompt({
+  ...record,
+  promptId: record.promptId,             // 以下字段均来自 getPromptList 行记录
+  objectVersionNumber: record.objectVersionNumber,
+  _token: record._token,
+  promptKey: record.promptKey,
+  promptCode: record.promptCode,
+  lang: record.lang,                     // 必填，缺失会抛错
+  langDescription: record.langDescription,
+  tenantId: record.tenantId,
+  promptConfigs: { zh_CN: '你好', en_US: 'Hello' },  // 包含所有语言，缺失语言会被补建
+});
+```
 
 ### deletePrompt - 删除多语言
 
@@ -116,7 +139,7 @@
 
 | 错误码 | 含义 | AI 处理 |
 |--------|------|---------|
-| `error.db.duplicateKey` | 数据已存在，重复插入 | 已有同 promptKey+promptCode 数据，停止插入，改为查询已存在条目或提示用户 |
+| `error.db.duplicateKey` | 数据已存在，重复插入 | insert 时：已有同 promptKey+promptCode 数据，停止插入，改为查询已存在条目或提示用户。update 时：通常是缺失 `lang` 字段导致 API 走 insert 路径与新语言行冲突，确认 `updatePrompt` 已自动补全 `lang`/`langDescription`/`tenantId` |
 | `error.permission.accessTokenExpire` | token 过期 | 停止操作，要求用户提供新 token |
 | HTTP 401 | token 过期 | 同上 |
 
