@@ -392,6 +392,7 @@ digraph workflow {
 - 英文大小写规范（见下）
 - intl.get 作用域（不能在组件外直接调用，见下）
 - formatterCollections 使用规范（见下）
+- .d() 默认值语言（见下）
 
 ### 英文大小写规范
 
@@ -455,6 +456,17 @@ const getColumns = () => [
 - `code` 为空或未传
 - `code` 与页面实际 `intl.get` 的 promptKey 不匹配
 
+### .d() 默认值语言检查
+
+检查 `intl.get(key).d(defaultValue)` 的默认值语言是否与项目 `defaultLanguage`（`.env.json`）一致。
+
+- 读取 `.env.json` 当前项目的 `defaultLanguage`（如 `zh_CN` / `en_US`）
+- 提取每个 `intl.get().d()` 的默认值，判断语言（含 CJK -> 中文，否则英文）
+- `defaultLanguage` 为 `zh_CN` -> `.d()` 默认值应为中文；为 `en_US` -> 应为英文
+- 不一致的问题列入 data.json，含：文件、行号、key、当前值、当前语言、期望语言
+- 带变量的模板字符串（如 `` `共 ${total} 条` ``）：按主体文字判断语言，变量占位符不影响
+- `.d()` 无值或空字符串：提示缺失默认值
+
 ### 检查项选择（多选）
 
 **检查开始前**，先用 `question` 工具（`multiple: true`）列出检查项（首个为「全部」），让用户**多选**要执行哪些检查：
@@ -467,6 +479,7 @@ const getColumns = () => [
 - 英文大小写规范
 - intl.get 作用域
 - formatterCollections 使用规范
+- .d() 默认值语言
 
 用户选「全部」时执行所有检查项；否则仅对选中的项执行，未选中的跳过。检查完成后将所有发现问题写入 data.json，并**严格以列表逐条展示**（每条问题含位置/类型/当前值/建议值，不得用段落叙述或省略）。
 
