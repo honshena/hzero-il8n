@@ -279,14 +279,7 @@ digraph workflow {
 }
 ```
 
-**每步打勾确认（严格按顺序，未确认不得进入下一步）：在 `{taskId}/task.md` 中维护以下流程清单，每完成一步将对应 `[ ]` 改为 `[✓]` 并在该步后写结果摘要，保存。**
-
-- [ ] Step 1：创建 taskId 和目录，并在 task.md 写入任务信息与流程清单
-- [ ] Step 2：生成 data.json，并在 task.md 填写待执行数据摘要
-- [ ] Step 3：展示 data.json 完整内容给用户审批
-- [ ] Step 4：用户确认（question 工具）
-- [ ] Step 5：执行操作
-- [ ] Step 6：写入 result.json，并在 task.md 填写执行结果摘要
+**每步打勾确认（严格按顺序，未确认不得进入下一步）：在 `{taskId}/task.md` 中维护以下流程清单，每完成一步将对应 `[ ]` 改为 `[✓]` 并在该步后写结果摘要。Step 5 必须按 data.json 每条具体操作展开为子项，逐条实际执行（修改源码/调用 API）后打勾，不得只打勾不执行。保存。**
 
 **`task.md` 模板（Step 1 创建，过程逐一打勾，Step 6 填结果摘要）：**
 
@@ -303,7 +296,13 @@ digraph workflow {
 - [ ] Step 2: 生成 data.json — 结果：
 - [ ] Step 3: 展示 data.json 给用户审批 — 结果：
 - [ ] Step 4: 用户确认（question 工具）— 结果：
-- [ ] Step 5: 执行操作 — 结果：
+- [ ] Step 5: 执行操作（按 data.json 每条操作逐一展开为子项，逐条实际执行后打勾）
+  - [ ] <具体操作1：如 修改 src/xxx.js 第 n 行硬编码为 intl.get('hsop.common.xxx').d('...')>
+  - [ ] <具体操作2：如 注册新 key hsop.common.xxx，调用 insertPrompt API>
+  - [ ] <具体操作3：如 修改 src/yyy.js 英文大小写 Create user -> Create User>
+  - [ ] <具体操作4：如 重构模块顶层 intl.get 为函数/getter>
+  - [ ] ...（data.json 有几条操作就列几条，逐条执行，不得合并/省略/只打勾不执行）
+  - 结果：
 - [ ] Step 6: 写入 result.json — 结果：
 
 ## 待执行数据摘要
@@ -325,7 +324,7 @@ digraph workflow {
 
 **Step 4:** 使用 `question` 工具让用户选择（确认执行/跳过/要求 AI 修改）。若用户要求修改，**由 AI 修改 data.json 后再次展示审批**，用户不直接编辑 data.json。
 
-**Step 5:** 用户确认后才能执行操作。
+**Step 5:** 用户确认后执行操作--AI 必须按 data.json 每条操作在 task.md 的 Step 5 展开为详细子项，逐条**实际修改源代码文件**（硬编码改 intl.get、改英文大小写、重构 intl.get 作用域、注册新 key 等）并**调用 API**（insert/update/delete 等）同步平台，每完成一条打勾 `[✓]`。不得只打勾不执行、不得只展示不修复。
 
 **Step 6:** 操作完成后将结果写入 `{taskId}/result.json`，并将执行结果摘要（成功/失败、处理条数、验证结果等）追加写入 `{taskId}/task.md` 的「执行结果摘要」章节，同时把 Step 6 打勾 `[✓]`。
 
@@ -451,7 +450,7 @@ const getColumns = () => [
 
 检查完成、问题写入 data.json 并逐条展示后，用 `question` 工具让用户选择：
 
-- **确认修复**：按 data.json 中的修复方案执行全部修复（进入 Step 5 执行，Step 6 写 result.json + task.md 摘要）
+- **确认修复**：按 data.json 修复方案在 task.md 的 Step 5 展开为详细子项，逐条**实际修改源代码文件**（硬编码改 intl.get、改大小写、重构作用域、注册 key 等）并调用 API 同步，每条打勾；进入 Step 5 执行，Step 6 写 result.json + task.md 摘要。AI 必须实际改代码，不得只展示不修复。
 - **跳过**：不修复，结束任务
 - **要求 AI 修改**：由 AI 调整 data.json（如只保留部分问题、修改建议值）后再次展示审批，用户不直接编辑 data.json
 
