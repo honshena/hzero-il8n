@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 const ENV_PATH = path.join(__dirname, '..', '.env.json');
 
@@ -55,23 +56,28 @@ async function request(method, urlPath, body = null, projectName = null, environ
     'Accept-Language': 'zh-CN,zh;q=0.9'
   };
 
-  const options = { method, headers };
+  const reqConfig = { method, url, headers };
   if (body && method !== 'GET') {
-    options.body = JSON.stringify(body);
+    reqConfig.data = body;
   }
 
-  const response = await fetch(url, options);
-  if (response.status === 401) {
-    throw new Error('TOKEN_EXPIRED: Token 已过期，请提供新的 token');
-  }
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`API 请求失败 (${response.status}): ${text}`);
+  let response;
+  try {
+    response = await axios(reqConfig);
+  } catch (e) {
+    if (e.response) {
+      if (e.response.status === 401) {
+        throw new Error('TOKEN_EXPIRED: Token 已过期，请提供新的 token');
+      }
+      const text = typeof e.response.data === 'string' ? e.response.data : JSON.stringify(e.response.data);
+      throw new Error(`API 请求失败 (${e.response.status}): ${text}`);
+    }
+    throw e;
   }
   if (response.status === 204) {
     return { success: true };
   }
-  return response.json();
+  return response.data;
 }
 
 async function getPromptList(params = {}) {
