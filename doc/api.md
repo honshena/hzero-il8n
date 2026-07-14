@@ -71,6 +71,35 @@ const detail = await api.getPromptDetail({
 
 > **promptConfigs 说明**：返回的 `promptConfigs` 是 `{ 语言代码: 翻译值 }` 对象，**仅包含数据库中实际存在行的语言**（值为空字符串 `""` 的行也算存在，表示语言行已建但翻译未填）。未在数据库建行的语言**不会**出现在 `promptConfigs` 中。因此判断某语言翻译是否缺失：看该语言 key 是否**不在** `promptConfigs` 中，而非看值是否为空。若需确认，可用一个肯定不存在的语言（如 `ja_JP`）查询 detail，对比 `promptConfigs` 出现的 key 即为实际有行的语言。
 
+### getPromptByLang - 按语言批量查询多语言
+
+| 项 | 值 |
+|----|---|
+| 方法 | `GET` |
+| 路径 | `/hpfm/v1/{tenantId}/prompt/{lang}?promptKey={key1,key2,...}` |
+| 用途 | 按语言查询多个 promptKey 下的所有多语言键值对（前端 `formatterCollections` 加载多语言时调用的接口） |
+| 参数 | `lang`（路径，语言代码如 `zh_CN`/`en_US`），`promptKey`（查询参数，逗号分隔多个 promptKey 命名空间），`tenantId`（路径），`project`，`environment` |
+| 返回 | `{ "promptKey.promptCode": "翻译值", ... }` 扁平对象 |
+
+> **语言行为**：返回指定语言下所有已存在翻译行的键值对。某 promptCode 在指定语言下无翻译行时，**不会**出现在返回结果中。因此可通过分别查询 `zh_CN` 和 `en_US`，对比两个结果的 key 集合来判断哪些 promptCode 缺少哪种语言翻译。这是检查「翻译缺失」的**首选方法**（2 次调用即可覆盖整个 promptKey，无需逐个 promptCode 调用 `getPromptDetail`）。
+
+调用示例：
+```javascript
+// 查询 zh_CN 和 en_US，对比找出缺少 en_US 翻译的 key
+const zhCN = await api.getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN', project: 'console', environment: 'dev' });
+// => { "hskp.test.hello": "你好", "hskp.test.hello1": "你好" }
+
+const enUS = await api.getPromptByLang({ promptKey: 'hskp.test', lang: 'en_US', project: 'console', environment: 'dev' });
+// => { "hskp.test.hello": "Hello" }
+
+// 对比：hskp.test.hello1 在 enUS 中不存在 => 缺少 en_US 翻译
+// 对比：enUS 中的值 "Hello" 可直接用于英文大小写规范检查
+
+// 支持多个 promptKey 逗号分隔
+const multi = await api.getPromptByLang({ promptKey: ['hskp.test', 'hskp.common'], lang: 'zh_CN', project: 'console', environment: 'dev' });
+// 也接受数组形式，内部自动拼接为逗号分隔
+```
+
 ### insertPrompt - 新增多语言
 
 | 项 | 值 |

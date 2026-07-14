@@ -135,6 +135,17 @@ async function getPromptDetail(params = {}) {
   return request('GET', `/hpfm/v1/prompts/detail${query}`, null, projectName, environmentName);
 }
 
+async function getPromptByLang(params = {}) {
+  const projectName = params.project || null;
+  const environmentName = params.environment || null;
+  const config = getConfig(projectName, environmentName);
+  const tenantId = params.tenantId !== undefined ? params.tenantId : (config.tenantId || 0);
+  const lang = params.lang || 'zh_CN';
+  const promptKey = Array.isArray(params.promptKey) ? params.promptKey.join(',') : (params.promptKey || '');
+  const query = `?promptKey=${encodeURIComponent(promptKey)}`;
+  return request('GET', `/hpfm/v1/${tenantId}/prompt/${lang}${query}`, null, projectName, environmentName);
+}
+
 async function updatePrompt(data, projectName = null, environmentName = null) {
   const required = ['promptId', 'objectVersionNumber', '_token', 'promptKey', 'promptCode', 'lang', 'langDescription', 'tenantId', 'promptConfigs'];
   const missing = required.filter((k) => data[k] === undefined || data[k] === null);
@@ -177,6 +188,7 @@ module.exports = {
   getProjectByFilePath,
   getPromptList,
   getPromptDetail,
+  getPromptByLang,
   updatePrompt,
   insertPrompt,
   deletePrompt,

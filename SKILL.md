@@ -210,6 +210,10 @@ const api = require('./scripts/api');
 // 查询（自动根据 fileProjectMap 确定项目，或手动指定）
 const list = await api.getPromptList({ promptKey: 'hskp.common', size: 0, project: 'hskp-console', environment: 'dev' });
 
+// 按语言批量查询（检查翻译缺失/英文大小写的首选方法）
+const zhCN = await api.getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN', project: 'hskp-console', environment: 'dev' });
+const enUS = await api.getPromptByLang({ promptKey: ['hskp.test', 'hskp.common'], lang: 'en_US', project: 'hskp-console', environment: 'dev' });
+
 // 新增
 await api.insertPrompt({ promptKey: '...', promptCode: '...', promptConfigs: {...} }, 'hskp-console', 'dev');
 
@@ -383,22 +387,72 @@ digraph workflow {
 - 新增多语言时 promptKey 不符合两段格式 `{xxx}.{xxx}`
 - 让用户直接修改 data.json（应由 AI 修改后重新提交审批）
 - 展示 data.json 时未列出 promptKey 与 promptCode
+- **用 `getPromptList` 返回结果判断翻译是否缺失**（列表只返回当前语言一行，必须用 `getPromptDetail` 获取完整 `promptConfigs` 后判断）
 
 ## Code Check (check)
 
 扫描代码文件中的 `intl.get()` 调用，检查：
 - 未注册的 key（平台上不存在）
 - 未使用的 key（代码中未引用）
-- 翻译缺失（promptConfigs 缺少某些语言）
+- 翻译缺失（promptConfigs 缺少某些语言，见下）
 - code 格式违规
 - 英文大小写规范（见下）
 - intl.get 作用域（不能在组件外直接调用，见下）
 - formatterCollections 使用规范（见下）
 - .d() 默认值语言（见下）
 
+### 平台查询策略（翻译缺失 / 英文大小写检查）
+
+检查「翻译缺失」和「英文大小写规范」时，**必须用按语言查询的接口获取完整语言集**，不能依赖列表查询。
+
+**三个接口的语言行为对比：**
+
+- **`getPromptList`（列表查询）**：按当前用户语言（固定 `Accept-Language: zh-CN`）返回每个 promptKey+promptCode 的**一行**记录（通常为 `zh_CN`）。同一 promptCode 的其他语言行**不会**在列表中返回。仅用于：
+  - 确认某 promptCode 是否已注册
+  - 获取 `promptId`/`objectVersionNumber`/`_token`/`lang`/`langDescription`/`tenantId` 等行记录字段（后续 updatePrompt 需要）
+  - **不能**用于判断某语言翻译是否存在或缺失
+
+- **`getPromptByLang`（按语言批量查询，首选）**：`GET /hpfm/v1/{tenantId}/prompt/{lang}?promptKey=...`，返回 `{ "promptKey.promptCode": "翻译值" }` 扁平对象，包含该语言下所有已存在翻译行的键值对。某 promptCode 在指定语言下无翻译行时不会出现在结果中。支持逗号分隔多个 promptKey。**这是检查翻译缺失的首选方法**（2 次调用即可覆盖整个 promptKey，无需逐个调用 detail）。
+
+- **`getPromptDetail`（单条详情查询，备选）**：返回的 `promptConfigs` 包含单个 promptCode 的所有语言。适用于需要查看单个 promptCode 完整语言集的场景，或修复时需要确认某条目当前状态。
+
+**检查流程（推荐使用 `getPromptByLang`）**：
+1. 调用 `getPromptByLang({ promptKey, lang: 'zh_CN' })` 获取该 promptKey 下所有已注册的 key 及其中文翻译
+2. 调用 `getPromptByLang({ promptKey, lang: 'en_US' })` 获取所有有英文翻译的 key 及其英文值
+3. 对代码中引用的每个 key，若不在 zh_CN 结果中 -> 归入「未注册的 key」问题
+4. 对比 zh_CN 和 en_US 结果的 key 集合：在 zh_CN 中但不在 en_US 中 -> 归入「翻译缺失」问题
+5. 检查 en_US 结果中各 key 的翻译值大小写 -> 归入「英文大小写规范」问题
+
+> **⚠️ 禁止用 `getPromptList` 的返回结果判断翻译是否缺失。** 列表中 `lang` 字段始终为当前请求语言（`zh_CN`），不代表该条目只有这一种语言。详见 `doc/api.md` 的 getPromptList / getPromptByLang / getPromptDetail 条目。
+
+```javascript
+// 推荐：用 getPromptByLang 按语言查询，2 次调用覆盖整个 promptKey
+const zhCN = await api.getPromptByLang({
+  promptKey: 'hskp.test', lang: 'zh_CN', project: 'console', environment: 'dev',
+});
+// => { "hskp.test.hello": "你好", "hskp.test.hello1": "你好" }
+
+const enUS = await api.getPromptByLang({
+  promptKey: 'hskp.test', lang: 'en_US', project: 'console', environment: 'dev',
+});
+// => { "hskp.test.hello": "Hello" }
+
+// 对比：hskp.test.hello1 在 enUS 中不存在 => 缺少 en_US 翻译
+// enUS 中的值 "Hello" 可直接用于英文大小写规范检查
+
+// 备选：用 getPromptDetail 查单个 promptCode 的完整语言集
+const detail = await api.getPromptDetail({
+  promptKey: 'hskp.test', promptCode: 'hello', lang: 'zh_CN',
+  project: 'console', environment: 'dev',
+});
+// detail.promptConfigs => { zh_CN: '你好', en_US: 'Hello' }
+```
+
 ### 英文大小写规范
 
 检查 `en_US` 值的大小写是否符合以下规则，发现问题需在 data.json 中列出当前值与建议值。
+
+> **数据来源**：`en_US` 值通过 `getPromptByLang({ lang: 'en_US' })` 获取（见上方「平台查询策略」）。若某 key 不在 en_US 查询结果中，则归入「翻译缺失」而非此项。
 
 **标题类（Title Case — 每个英文单词首字母大写）：**
 - 适用：页面标题、弹窗/抽屉标题、表格列标题、分区标题、按钮、菜单项、标签页、面包屑文字

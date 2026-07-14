@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { getConfig, getProjectByFilePath, getUserSelf, insertPrompt, updatePrompt } = require('../scripts/api');
+const { getConfig, getProjectByFilePath, getUserSelf, insertPrompt, updatePrompt, getPromptByLang } = require('../scripts/api');
 
 const envPath = path.join(__dirname, '..', '.env.json');
 let backup = null;
@@ -207,6 +207,54 @@ test('updatePrompt: 完整参数正确透传', async () => {
     assert.strictEqual(receivedBody.langDescription, '中文(简体)');
     assert.strictEqual(receivedBody.tenantId, 0);
     assert.deepStrictEqual(receivedBody.promptConfigs, { zh_CN: '你好', en_US: 'Hello' });
+  } finally {
+    env.projects.mock.environments.dev.host = mockUrl;
+    fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+    await new Promise((r) => srv.close(r));
+  }
+});
+
+test('getPromptByLang: 路径含 tenantId 和 lang，promptKey 作为查询参数', async () => {
+  let receivedUrl = null;
+  const srv = http.createServer((req, res) => {
+    receivedUrl = req.url;
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ 'hskp.test.hello': '你好' }));
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const srvUrl = `http://127.0.0.1:${srv.address().port}`;
+  const env = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+  env.projects.mock.environments.dev.host = srvUrl;
+  fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+  try {
+    const result = await getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN' });
+    // 路径格式: /hpfm/v1/{tenantId}/prompt/{lang}?promptKey=...
+    assert.ok(receivedUrl.startsWith('/hpfm/v1/0/prompt/zh_CN?promptKey='));
+    assert.ok(receivedUrl.includes('promptKey=hskp.test'));
+    assert.deepStrictEqual(result, { 'hskp.test.hello': '你好' });
+  } finally {
+    env.projects.mock.environments.dev.host = mockUrl;
+    fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+    await new Promise((r) => srv.close(r));
+  }
+});
+
+test('getPromptByLang: 数组形式 promptKey 拼接为逗号分隔', async () => {
+  let receivedUrl = null;
+  const srv = http.createServer((req, res) => {
+    receivedUrl = req.url;
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({}));
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const srvUrl = `http://127.0.0.1:${srv.address().port}`;
+  const env = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+  env.projects.mock.environments.dev.host = srvUrl;
+  fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+  try {
+    await getPromptByLang({ promptKey: ['hskp.test', 'hskp.common'], lang: 'en_US' });
+    assert.ok(receivedUrl.includes('promptKey=hskp.test%2Chskp.common'));
+    assert.ok(receivedUrl.startsWith('/hpfm/v1/0/prompt/en_US?'));
   } finally {
     env.projects.mock.environments.dev.host = mockUrl;
     fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
