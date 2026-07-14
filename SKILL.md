@@ -172,6 +172,8 @@ const taskId = generateTaskId('operation-name');
 const taskDir = createTaskDir(taskId);
 ```
 
+> Step 1 完成后，在 `{taskId}/task.md` 写入任务信息与流程清单（全部 `[ ]`）。执行过程逐一打勾，Step 2 后填待执行数据摘要，Step 6 后填执行结果摘要（详见下方「强制流程」）。
+
 ### Step 2: 生成 data.json
 
 将所有待执行的操作写入 `{taskId}/data.json`：
@@ -187,15 +189,15 @@ writeDataTaskDir(taskDir, 'data.json', {
 
 ### Step 3: 展示给用户审批
 
-**必须将 data.json 的完整内容展示给用户**，不能省略、不能摘要，**严格以列表/表格形式逐条展示**（每条操作/问题单独成项，不得用段落叙述）。
+**必须将 data.json 的完整内容展示给用户审批**，不能省略、不能摘要，**严格以列表/表格形式逐条展示，每条必须列出 `promptKey` 与 `promptCode`**。data.json 仅展示，用户不直接修改。
 
 ### Step 4: 用户确认后执行
 
-使用 `question` 工具让用户选择，确认后才能执行。
+使用 `question` 工具让用户选择（确认执行/跳过/要求 AI 修改）。用户要求修改时，由 AI 修改 data.json 后再次展示审批，确认后才能执行。
 
 ### Step 5: 写入 result.json
 
-操作完成后将结果写入 `{taskId}/result.json`。
+操作完成后将结果写入 `{taskId}/result.json`，并将执行结果摘要追加写入 `{taskId}/task.md`，同时把流程清单全部打勾 `[✓]`。
 
 ## API Usage
 
@@ -250,6 +252,8 @@ const code = generatePromptCode('DataManage', 'button', 'create');
 
 规则：1-5 段，camelCase，融合模块/视图信息。
 
+**promptKey 约束：** promptKey 必须为两段格式 `{xxx}.{xxx}`（如 `hsop.common`、`hskp.platform`），新增多语言时必须校验，不符合则拒绝并提示用户。
+
 ## Constraints
 
 **违反以下任何一条都视为流程违规，必须立即停止并纠正。**
@@ -274,29 +278,55 @@ digraph workflow {
 }
 ```
 
-**每步打勾确认（严格按顺序，未确认不得进入下一步）：**
+**每步打勾确认（严格按顺序，未确认不得进入下一步）：在 `{taskId}/task.md` 中维护以下流程清单，每完成一步将对应 `[ ]` 改为 `[✓]` 并在该步后写结果摘要，保存。**
 
-- [ ] Step 1：创建 taskId 和目录 — 完成后输出 `✓ Step 1 完成`
-- [ ] Step 2：生成 data.json — 完成后输出 `✓ Step 2 完成`
-- [ ] Step 3：展示 data.json 完整内容给用户审批 — 完成后输出 `✓ Step 3 完成`
-- [ ] Step 4：用户确认（question 工具）— 完成后输出 `✓ Step 4 完成`
-- [ ] Step 5：执行操作 — 完成后输出 `✓ Step 5 完成`
-- [ ] Step 6：写入 result.json — 完成后输出 `✓ Step 6 完成`
+- [ ] Step 1：创建 taskId 和目录，并在 task.md 写入任务信息与流程清单
+- [ ] Step 2：生成 data.json，并在 task.md 填写待执行数据摘要
+- [ ] Step 3：展示 data.json 完整内容给用户审批
+- [ ] Step 4：用户确认（question 工具）
+- [ ] Step 5：执行操作
+- [ ] Step 6：写入 result.json，并在 task.md 填写执行结果摘要
 
-**Step 1:** 必须先调用 `generateTaskId()` 创建 taskId，再调用 `createTaskDir()` 创建目录。
+**`task.md` 模板（Step 1 创建，过程逐一打勾，Step 6 填结果摘要）：**
+
+```markdown
+# 任务: {taskId}
+
+- 操作类型: query/add/modify/delete/check/translate/export/import
+- 项目/环境: {project} / {environment}
+- 创建时间: {ISO}
+
+## 执行流程（每完成一步打勾并写结果摘要）
+
+- [ ] Step 1: 创建 taskId 和目录 — 结果：
+- [ ] Step 2: 生成 data.json — 结果：
+- [ ] Step 3: 展示 data.json 给用户审批 — 结果：
+- [ ] Step 4: 用户确认（question 工具）— 结果：
+- [ ] Step 5: 执行操作 — 结果：
+- [ ] Step 6: 写入 result.json — 结果：
+
+## 待执行数据摘要
+（Step 2 后填写：操作类型、条目数、关键内容）
+
+## 执行结果摘要
+（Step 6 后填写：成功/失败、处理条数、验证结果等）
+```
+
+
+**Step 1:** 必须先调用 `generateTaskId()` 创建 taskId，再调用 `createTaskDir()` 创建目录，然后在 `{taskId}/task.md` 写入任务信息（taskId、操作类型、项目/环境、创建时间）与上述流程清单（全部 `[ ]`）。
 
 **Step 2:** 将所有待执行的操作写入 `{taskId}/data.json`，包括：
 - 操作类型（query/add/modify/delete/check/translate/export/import）
 - 完整的数据内容（不是摘要）
 - 对于 check 操作：列出所有发现的问题，每个问题包含行号、类型、当前值、建议值
 
-**Step 3:** 必须将 data.json 的完整内容展示给用户，**不能省略、不能摘要、不能只展示部分，严格以列表/表格逐条展示**。
+**Step 3:** 必须将 data.json 的完整内容展示给用户审批，**不能省略、不能摘要、不能只展示部分，严格以列表/表格逐条展示，且每条必须列出 `promptKey` 与 `promptCode`**。data.json 仅展示给用户，用户不直接修改。
 
-**Step 4:** 使用 `question` 工具让用户选择操作（修复/跳过/修改）。
+**Step 4:** 使用 `question` 工具让用户选择（确认执行/跳过/要求 AI 修改）。若用户要求修改，**由 AI 修改 data.json 后再次展示审批**，用户不直接编辑 data.json。
 
 **Step 5:** 用户确认后才能执行操作。
 
-**Step 6:** 操作完成后将结果写入 `{taskId}/result.json`。
+**Step 6:** 操作完成后将结果写入 `{taskId}/result.json`，并将执行结果摘要（成功/失败、处理条数、验证结果等）追加写入 `{taskId}/task.md` 的「执行结果摘要」章节，同时把 Step 6 打勾 `[✓]`。
 
 ### taskId 格式
 
@@ -324,9 +354,10 @@ digraph workflow {
    - **禁止批量删除，必须一条一条审批**
    - **如果用户只是提到"删除"但没有明确要求执行删除操作（如讨论删除逻辑），不得调用删除接口**
 10. **新增多语言 key 的正确流程（必须按顺序执行）：**
+    - Step 0: 校验 promptKey 为两段格式 `{xxx}.{xxx}`，不符合则拒绝并提示用户
     - Step 1: 查询平台确认 key 不存在
     - Step 2: 修改代码文件
-    - Step 3: 展示 data.json 给用户审批
+    - Step 3: 展示 data.json 给用户审批（列出 promptKey 与 promptCode）
     - Step 4: 用户确认后，调用 insertPrompt 新增到平台
     - Step 5: 调用查询接口验证新增是否生效
     - **禁止先新增平台再修改代码，必须先确认平台无此 key**
@@ -345,7 +376,11 @@ digraph workflow {
 - 未经用户明确要求就调用 deletePrompt
 - 批量删除多语言条目（必须逐条审批）
 - **先新增平台再修改代码（必须先修改代码再新增平台）**
-- 未在每步完成后打勾确认就进入下一步
+- 未在每步完成后于 `task.md` 打勾确认就进入下一步
+- 未在任务目录创建 `task.md`，或未在 `task.md` 写入执行结果摘要
+- 新增多语言时 promptKey 不符合两段格式 `{xxx}.{xxx}`
+- 让用户直接修改 data.json（应由 AI 修改后重新提交审批）
+- 展示 data.json 时未列出 promptKey 与 promptCode
 
 ## Code Check (check)
 

@@ -44,7 +44,7 @@ code 组成规则为 `{promptKey}.{promptCode}`
 
 ### promptKey
 
-模板代码，组成规则为 `{项目}.{项目分包名称简写}`
+模板代码，组成规则为 `{项目}.{项目分包名称简写}`，**必须为两段格式 `{xxx}.{xxx}`**（如 `hsop.common`、`hskp.platform`），不得为一段或超过两段。
 
 项目分包名称一般是简写的短字符，例如：
 - `hskp.common` - 通用模块
