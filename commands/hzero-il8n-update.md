@@ -18,6 +18,7 @@ description: Check hzero-il8n skill for updates
    - 询问用户是否更新
    - 用户确认后执行 `git pull` 与 `npm install`
    - 运行 `.\setup.ps1`（或 `setup.bat`）重新注册命令（新增/修改的命令才会生效）
+   - 读 `CHANGELOG.md`，找到新版本（及中间版本）条目的「⚠️ 更新须知」，按提示执行额外步骤（如清理缓存、重新配置等）并向用户说明
    - 提示用户重启 AI 工具，使新 SKILL.md / 命令生效
 
 本命令为 skill 自身的版本管理，不经过 i18n 操作的 taskId/data.json 流程。

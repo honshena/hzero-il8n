@@ -148,7 +148,7 @@ const r = await checkDailyUpdate();        // 默认 master 分支，cache-first
 检查状态记录在 `cache.json`（`lastCheckDate` / `skippedVersion`）。`checkDailyUpdate` 在执行当天首次检查时即写入 `lastCheckDate`，**无论成功或失败当天都不再重复检查**。
 
 **`update-available` 时的三个选项：**
-- **立即更新**：执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1`（或 `setup.bat`）重新注册命令（新增/修改的命令才会生效），提示用户重启 AI 工具
+- **立即更新**：执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1`（或 `setup.bat`）重新注册命令；读 `CHANGELOG.md` 新版本条目的「⚠️ 更新须知」并按提示执行额外步骤（清理缓存/重新配置等）；提示用户重启 AI 工具
 - **跳过此版本**：运行 `node scripts/update.js --skip <latest>` 记录跳过，本次不再提示（直到出现更新的版本）
 - **稍后再说**：本次不更新，明天首次使用时再次提示
 

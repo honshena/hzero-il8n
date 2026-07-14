@@ -158,7 +158,7 @@ node scripts/update.js --daily      # cache-first（每日自动检查用）
 node scripts/update.js --skip <ver> # 跳过指定版本
 ```
 
-**强制检查**（`node scripts/update.js`）返回 `{ current, latest, hasUpdate }`，`hasUpdate` 为 true 时进入更新流程。**cache-first 检查**（`--daily`）返回 `action`：`skip-already-checked`（今日已查）/ `up-to-date`（最新）/ `skip-skipped-version`（已跳过该版本）/ `update-available`（有新版）/ `check-failed`（失败，仅提示，不阻塞）。`hasUpdate` / `update-available` 时向用户确认后执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1` 重新注册命令，最后重启 AI 工具使新 SKILL.md / 命令生效。
+**强制检查**（`node scripts/update.js`）返回 `{ current, latest, hasUpdate }`，`hasUpdate` 为 true 时进入更新流程。**cache-first 检查**（`--daily`）返回 `action`：`skip-already-checked`（今日已查）/ `up-to-date`（最新）/ `skip-skipped-version`（已跳过该版本）/ `update-available`（有新版）/ `check-failed`（失败，仅提示，不阻塞）。`hasUpdate` / `update-available` 时向用户确认后执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1` 重新注册命令，读 `CHANGELOG.md` 新版本条目的「⚠️ 更新须知」按提示执行额外步骤，最后重启 AI 工具使新 SKILL.md / 命令生效。
 
 脚本从 `package.json` 的 `repository.url` 推导远程地址（已配置为 honshena/hzero-il8n）。若 404，尝试其他分支名或检查仓库地址。
 
@@ -171,6 +171,7 @@ node scripts/update.js --skip <ver> # 跳过指定版本
 ```
 hzero-il8n/
 ├── SKILL.md                 # skill 主文档（流程、约束、API 用法）
+├── CHANGELOG.md             # 变更记录 + ⚠️ 更新须知（更新时必读）
 ├── README.md                # 本文档
 ├── commands/                # /hzero-il8n-* 斜杠命令定义
 ├── scripts/                 # Node 脚本（api / csv / excel / utils / update / test 运行器）
