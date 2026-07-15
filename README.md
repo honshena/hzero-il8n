@@ -102,11 +102,17 @@ Copy-Item "<skill目录>\commands\hzero-il8n-*.md" "$env:USERPROFILE\.claude\com
   },
   "currentProject": "hskp-console",
   "currentEnvironment": "dev",
-  "fileProjectMap": {}
+  "fileProjectMap": {},
+  "update": {
+    "httpProxy": "http://127.0.0.1:7890",
+    "httpsProxy": "http://127.0.0.1:7890"
+  }
 }
 ```
 
 Token 必须有 0 租户平台层权限。`fileProjectMap` 记录文件路径与项目的关联，由 AI 自动维护，详见 SKILL.md。
+
+`update` 为可选字段（用户手动配置），用于版本更新检查（`/hzero-il8n-update`）的 HTTP/HTTPS 代理。执行更新检查时若该字段存在，AI 优先将其设为 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量再运行（axios 自动读取）；未配置则沿用系统已有的代理环境变量。
 
 ## 命令
 
@@ -162,6 +168,8 @@ node scripts/update.js --skip <ver> # 跳过指定版本
 **强制检查**（`node scripts/update.js`）返回 `{ current, latest, hasUpdate }`，`hasUpdate` 为 true 时进入更新流程。**cache-first 检查**（`--daily`）返回 `action`：`skip-already-checked`（今日已查）/ `up-to-date`（最新）/ `skip-skipped-version`（已跳过该版本）/ `update-available`（有新版）/ `check-failed`（失败，仅提示，不阻塞）。`hasUpdate` / `update-available` 时向用户确认后执行 `git pull` 与 `npm install`，再运行 `.\setup.ps1` 重新注册命令，读 `CHANGELOG.md` 新版本条目的「⚠️ 更新须知」按提示执行额外步骤，最后重启 AI 工具使新 SKILL.md / 命令生效。
 
 脚本从 `package.json` 的 `repository.url` 推导远程地址（已配置为 honshena/hzero-il8n）。若 404，尝试其他分支名或检查仓库地址。
+
+**代理配置**：访问 GitHub raw 需要代理时，在 `.env.json` 的 `update.httpProxy`/`update.httpsProxy` 填入代理地址（用户手动配置，推荐），AI 执行更新检查时**优先使用**该配置（设为 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量，axios 自动读取）；未配置则沿用系统已有的 `HTTPS_PROXY` 环境变量。
 
 ### 每日自动检查
 

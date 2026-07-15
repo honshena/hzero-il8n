@@ -70,11 +70,17 @@ setup.bat
   },
   "currentProject": "项目名",
   "currentEnvironment": "dev",
-  "fileProjectMap": {}
+  "fileProjectMap": {},
+  "update": {
+    "httpProxy": "http://127.0.0.1:7890",
+    "httpsProxy": "http://127.0.0.1:7890"
+  }
 }
 ```
 
 **Token 要求：** 必须有 0 租户平台层权限。
+
+`update` 为可选字段（用户手动配置），用于版本更新检查（`/hzero-il8n-update`）的 HTTP/HTTPS 代理。执行更新检查前，若该字段存在，AI 优先将其设为 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量再运行（axios 自动读取）；未配置则沿用系统已有的代理环境变量。
 
 ### 默认语言探测（defaultLanguage）
 
@@ -128,6 +134,8 @@ if (!result.valid) {
 ## 每日更新检查
 
 **每天首次使用本 skill 时，必须先执行每日更新检查（每天仅一次）。检查为 cache-first：先读 `cache.json` 的 `lastCheckDate`，若为今天则直接返回 `skip-already-checked`，不调用网络接口；仅当今日未检查过时才调用接口。**（用户手动要求重新检查时用强制检查，见下文。）
+
+> **代理优先**：执行更新检查前，先读 `.env.json` 的 `update.httpProxy`/`httpsProxy`，若存在则优先将其设为 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量（覆盖系统已有值），再调用下面的脚本/函数（`update.js` 用 axios 自动读取这两个环境变量）。
 
 > 手动执行 `/hzero-il8n-update` 命令为**强制检查**（`node scripts/update.js`，始终联网，不读 cache 判断是否跳过），但检查后写入 `lastCheckDate`；本节 cache-first（读 cache 判断是否跳过）仅适用于每日自动检查。
 

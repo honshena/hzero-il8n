@@ -36,3 +36,6 @@ node scripts/test.js   # 运行单元测试（修改脚本后必跑）
 - CommonJS（`require` / `module.exports`），不引入新依赖（除非必要且经确认）。
 - 不加无关注释，遵循既有脚本风格。
 - `cache.json` 为本地状态（已 `.gitignore`）；`.env.json` 含 token 密钥，**禁止提交到仓库**。
+- **`.env.json` 由用户手动维护，skill 代码只读不写**（不得用脚本/测试向其写入代理等任何字段；测试涉及 `.env.json` 时用 `before`/`after` 备份并还原，不得残留改动）。
+- **`cache.json` 与 `.env.json` 同样不可由 AI 额外修改**：仅由 `update.js` 的更新检查逻辑（`checkDailyUpdate` / `skipVersion`）读写，AI 不得绕过这些函数直接操作；测试涉及 `cache.json` 时用 `before`/`after` 备份并还原，不得残留改动。
+- **版本更新检查的代理通过 `HTTPS_PROXY` / `HTTP_PROXY` 环境变量配置**（`update.js` 用 axios，axios 自动读取这两个环境变量，无需在代码或 `.env.json` 中额外配置）。需代理时由用户设置环境变量（如 `set HTTPS_PROXY=http://127.0.0.1:7890`），不要改 `update.js`。
