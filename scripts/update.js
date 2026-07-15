@@ -1,6 +1,6 @@
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 const pkg = require('../package.json');
 
 const cachePath = path.join(__dirname, '..', 'cache.json');
@@ -11,22 +11,17 @@ function parseRepo(url) {
   return { owner: m[1], repo: m[2] };
 }
 
-function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'User-Agent': 'hzero-il8n-update-check' } }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return resolve(fetchJson(res.headers.location));
-      }
-      if (res.statusCode !== 200) {
-        return reject(new Error(`HTTP ${res.statusCode}: ${url}`));
-      }
-      let data = '';
-      res.on('data', (c) => (data += c));
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
-      });
-    }).on('error', reject);
-  });
+// axios 默认跟随重定向、自动解析 JSON、非 2xx 抛错；并自动读取 HTTPS_PROXY/HTTP_PROXY 环境变量
+async function fetchJson(url) {
+  try {
+    const res = await axios.get(url, {
+      headers: { 'User-Agent': 'hzero-il8n-update-check' },
+    });
+    return res.data;
+  } catch (e) {
+    const detail = e.response ? `HTTP ${e.response.status}` : e.message;
+    throw new Error(`请求 ${url} 失败: ${detail}。GitHub raw 可能需要代理访问，请配置 HTTPS_PROXY 环境变量（如 set HTTPS_PROXY=http://127.0.0.1:7890）后重试。`);
+  }
 }
 
 function compareSemver(a, b) {
