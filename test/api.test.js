@@ -261,3 +261,29 @@ test('getPromptByLang: 数组形式 promptKey 拼接为逗号分隔', async () =
     await new Promise((r) => srv.close(r));
   }
 });
+
+test('getPromptByLang: 无 token 配置时不发送 authorization 头且正常返回', async () => {
+  let receivedAuth = '__SENTINEL__';
+  const srv = http.createServer((req, res) => {
+    receivedAuth = req.headers['authorization'] || null;
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ 'hskp.test.hello': '你好' }));
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const srvUrl = `http://127.0.0.1:${srv.address().port}`;
+  const env = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+  const oldToken = env.projects.mock.environments.dev.token;
+  env.projects.mock.environments.dev.host = srvUrl;
+  delete env.projects.mock.environments.dev.token;
+  fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+  try {
+    const result = await getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN' });
+    assert.strictEqual(receivedAuth, null, '不应发送 authorization 头');
+    assert.deepStrictEqual(result, { 'hskp.test.hello': '你好' });
+  } finally {
+    env.projects.mock.environments.dev.host = mockUrl;
+    env.projects.mock.environments.dev.token = oldToken;
+    fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+    await new Promise((r) => srv.close(r));
+  }
+});

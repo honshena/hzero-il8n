@@ -50,11 +50,12 @@ async function request(method, urlPath, body = null, projectName = null, environ
   const url = `${config.host}${urlPath}`;
   const headers = {
     'accept': 'application/json, text/plain, */*',
-    'authorization': config.token,
-    'h-menu-id': '-1',
     'content-type': 'application/json;charset=UTF-8',
     'Accept-Language': 'zh-CN,zh;q=0.9'
   };
+  if (config.token) {
+    headers['authorization'] = config.token;
+  }
 
   const reqConfig = { method, url, headers };
   if (body && method !== 'GET') {

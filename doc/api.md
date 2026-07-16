@@ -1,13 +1,14 @@
 # h0 平台多语言 API 文档
 
-`scripts/api.js` 封装的 hpfm/iam 平台多语言接口。所有接口需 `authorization` token（0 租户平台层权限）。
+`scripts/api.js` 封装的 hpfm/iam 平台多语言接口。除 `getPromptByLang` 为公开接口（无需 token）外，其余接口需 `authorization` token（0 租户平台层权限）。
 
 ## 公共说明
 
 - host：取自 `.env.json` 项目环境配置的 `host`
-- 请求头：`authorization`（token）、`content-type: application/json`、`Accept-Language: zh-CN,zh;q=0.9`、`h-menu-id: -1`
+- 请求头：`authorization`（token，仅需鉴权接口发送）、`content-type: application/json`、`Accept-Language: zh-CN,zh;q=0.9`、`h-menu-id: -1`（仅需鉴权接口发送）
 - 租户：默认 0（0 租户平台层）
 - 401：token 过期，抛 `TOKEN_EXPIRED`，需用户提供新 token
+- **公开接口（`getPromptByLang`）**：`.env.json` 中 `token` 可为空，`request()` 会在 `token` 为空时跳过 `authorization` 头
 
 ---
 
@@ -80,6 +81,7 @@ const detail = await api.getPromptDetail({
 | 用途 | 按语言查询多个 promptKey 下的所有多语言键值对（前端 `formatterCollections` 加载多语言时调用的接口） |
 | 参数 | `lang`（路径，语言代码如 `zh_CN`/`en_US`），`promptKey`（查询参数，逗号分隔多个 promptKey 命名空间），`tenantId`（路径），`project`，`environment` |
 | 返回 | `{ "promptKey.promptCode": "翻译值", ... }` 扁平对象 |
+| **鉴权** | **无需 token**（公开接口，前端登录前加载多语言也用此接口）。`.env.json` 中 `token` 可为空，`request()` 自动跳过 `authorization` 头 |
 
 > **语言行为**：返回指定语言下所有已存在翻译行的键值对。某 promptCode 在指定语言下无翻译行时，**不会**出现在返回结果中。因此可通过分别查询 `zh_CN` 和 `en_US`，对比两个结果的 key 集合来判断哪些 promptCode 缺少哪种语言翻译。这是检查「翻译缺失」的**首选方法**（2 次调用即可覆盖整个 promptKey，无需逐个 promptCode 调用 `getPromptDetail`）。
 

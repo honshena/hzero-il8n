@@ -79,7 +79,7 @@ setup.bat
 ```
 
 **Token 要求：** 必须有 0 租户平台层权限。
-
+**`getPromptByLang` 为公开接口，无需 token,其他接口都需要token**
 `update` 为可选字段（用户手动配置），用于版本更新检查（`/hzero-front-i18n-update`）的 HTTP/HTTPS 代理。执行更新检查前，若该字段存在，AI 优先将其设为 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量再运行（axios 自动读取）；未配置则沿用系统已有的代理环境变量。
 
 ### 默认语言探测（defaultLanguage）
@@ -219,6 +219,7 @@ const api = require('./scripts/api');
 const list = await api.getPromptList({ promptKey: 'hskp.common', size: 0, project: 'hskp-console', environment: 'dev' });
 
 // 按语言批量查询（检查翻译缺失/英文大小写的首选方法）
+// ⚠️ 公开接口，无需 token：.env.json 中 token 可为空
 const zhCN = await api.getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN', project: 'hskp-console', environment: 'dev' });
 const enUS = await api.getPromptByLang({ promptKey: ['hskp.test', 'hskp.common'], lang: 'en_US', project: 'hskp-console', environment: 'dev' });
 
@@ -420,11 +421,11 @@ digraph workflow {
   - 获取 `promptId`/`objectVersionNumber`/`_token`/`lang`/`langDescription`/`tenantId` 等行记录字段（后续 updatePrompt 需要）
   - **不能**用于判断某语言翻译是否存在或缺失
 
-- **`getPromptByLang`（按语言批量查询，首选）**：`GET /hpfm/v1/{tenantId}/prompt/{lang}?promptKey=...`，返回 `{ "promptKey.promptCode": "翻译值" }` 扁平对象，包含该语言下所有已存在翻译行的键值对。某 promptCode 在指定语言下无翻译行时不会出现在结果中。支持逗号分隔多个 promptKey。**这是检查翻译缺失的首选方法**（2 次调用即可覆盖整个 promptKey，无需逐个调用 detail）。
+- **`getPromptByLang`（按语言批量查询，首选, 无需token）**：`GET /hpfm/v1/{tenantId}/prompt/{lang}?promptKey=...`，返回 `{ "promptKey.promptCode": "翻译值" }` 扁平对象，包含该语言下所有已存在翻译行的键值对。某 promptCode 在指定语言下无翻译行时不会出现在结果中。支持逗号分隔多个 promptKey。**这是检查翻译缺失的首选方法**（2 次调用即可覆盖整个 promptKey，无需逐个调用 detail）。
 
 - **`getPromptDetail`（单条详情查询，备选）**：返回的 `promptConfigs` 包含单个 promptCode 的所有语言。适用于需要查看单个 promptCode 完整语言集的场景，或修复时需要确认某条目当前状态。
 
-**检查流程（推荐使用 `getPromptByLang`）**：
+**检查流程（推荐使用 `getPromptByLang 无需token）`）**：
 1. 调用 `getPromptByLang({ promptKey, lang: 'zh_CN' })` 获取该 promptKey 下所有已注册的 key 及其中文翻译
 2. 调用 `getPromptByLang({ promptKey, lang: 'en_US' })` 获取所有有英文翻译的 key 及其英文值
 3. 对代码中引用的每个 key，若不在 zh_CN 结果中 -> 归入「未注册的 key」问题
@@ -434,7 +435,7 @@ digraph workflow {
 > **⚠️ 禁止用 `getPromptList` 的返回结果判断翻译是否缺失。** 列表中 `lang` 字段始终为当前请求语言（`zh_CN`），不代表该条目只有这一种语言。详见 `doc/api.md` 的 getPromptList / getPromptByLang / getPromptDetail 条目。
 
 ```javascript
-// 推荐：用 getPromptByLang 按语言查询，2 次调用覆盖整个 promptKey
+// 推荐：用 getPromptByLang 按语言查询, 无需token，2 次调用覆盖整个 promptKey
 const zhCN = await api.getPromptByLang({
   promptKey: 'hskp.test', lang: 'zh_CN', project: 'console', environment: 'dev',
 });
