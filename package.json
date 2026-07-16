@@ -1,10 +1,10 @@
 {
-  "name": "hzero-i18n",
+  "name": "hzero-front-i18n",
   "version": "1.1.13",
   "description": "h0 平台多语言管理 skill",
   "repository": {
     "type": "git",
-    "url": "https://github.com/honshena/hzero-i18n.git"
+    "url": "https://github.com/honshena/hzero-front-i18n.git"
   },
   "main": "index.js",
   "directories": {

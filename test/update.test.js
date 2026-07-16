@@ -26,7 +26,7 @@ test('compareSemver: 比较器返回 负/零/正', () => {
 });
 
 test('parseRepo: 解析 GitHub URL', () => {
-  assert.deepStrictEqual(parseRepo('https://github.com/honshena/hzero-i18n.git'), { owner: 'honshena', repo: 'hzero-i18n' });
+  assert.deepStrictEqual(parseRepo('https://github.com/honshena/hzero-front-i18n.git'), { owner: 'honshena', repo: 'hzero-front-i18n' });
   assert.deepStrictEqual(parseRepo('git@github.com:owner/repo.git'), { owner: 'owner', repo: 'repo' });
   assert.strictEqual(parseRepo('https://gitlab.com/x/y'), null);
   assert.strictEqual(parseRepo(null), null);

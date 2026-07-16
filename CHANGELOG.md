@@ -1,6 +1,6 @@
 # Changelog
 
-记录 hzero-i18n skill 版本变更。
+记录 hzero-front-i18n skill 版本变更。
 
 > **更新须知机制**：更新 skill 后（`git pull`），AI 必须读本文件，找到从用户旧版本到新版本之间的所有版本条目，按各条「⚠️ 更新须知」执行特殊操作（如重新安装依赖、重新注册命令、清理缓存、重新配置等），并向用户说明。标准更新流程（`npm install` + `.\setup.ps1` 重新注册命令 + 重启）始终执行；「⚠️ 更新须知」用于额外的版本迁移步骤。
 
@@ -17,5 +17,5 @@
 ## [1.1.2] - 2026-07-13
 
 - 基线版本：查询/新增/修改/删除/翻译/检查/导入导出
-- 版本更新检查（`/hzero-i18n-update`）、`cache.json` 每日检查、`setup` 注册命令
+- 版本更新检查（`/hzero-front-i18n-update`）、`cache.json` 每日检查、`setup` 注册命令
 - 开放平台多语言说明 `doc/openplatform/`
