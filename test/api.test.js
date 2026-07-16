@@ -3,7 +3,7 @@ const assert = require('node:assert');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { getConfig, getProjectByFilePath, getUserSelf, insertPrompt, updatePrompt, getPromptByLang } = require('../scripts/api');
+const { getConfig, getProjectByFilePath, getUserSelf, insertPrompt, updatePrompt, getPromptByLang, getPromptExact } = require('../scripts/api');
 
 const envPath = path.join(__dirname, '..', '.env.json');
 let backup = null;
@@ -286,4 +286,84 @@ test('getPromptByLang: 无 token 配置时不发送 authorization 头且正常�
     fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
     await new Promise((r) => srv.close(r));
   }
+});
+
+// getPromptExact: 精确过滤模糊查询结果，update/delete 取记录的安全保证
+function mockPageListServer(content) {
+  return http.createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ content, totalElements: content.length }));
+  });
+}
+
+async function withMockHost(fn, content) {
+  const srv = mockPageListServer(content);
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const srvUrl = `http://127.0.0.1:${srv.address().port}`;
+  const env = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+  env.projects.mock.environments.dev.host = srvUrl;
+  fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+  try {
+    return await fn();
+  } finally {
+    env.projects.mock.environments.dev.host = mockUrl;
+    fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
+    await new Promise((r) => srv.close(r));
+  }
+}
+
+test('getPromptExact: 从模糊结果中精确过滤出唯一记录', async () => {
+  // 模拟 page-list 模糊查询 promptKey=1 命中 1/10/11
+  const content = [
+    { promptId: 'id10', promptKey: 'hskp.10', promptCode: 'hello', objectVersionNumber: 1, _token: 't10' },
+    { promptId: 'id1', promptKey: 'hskp.1', promptCode: 'hello', objectVersionNumber: 2, _token: 't1' },
+    { promptId: 'id11', promptKey: 'hskp.11', promptCode: 'hello', objectVersionNumber: 3, _token: 't11' },
+  ];
+  await withMockHost(async () => {
+    const r = await getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello' });
+    assert.strictEqual(r.promptId, 'id1', '应精确匹配 hskp.1 而非首个 hskp.10');
+    assert.strictEqual(r.objectVersionNumber, 2);
+  }, content);
+});
+
+test('getPromptExact: 同 promptKey 下按 promptCode 精确过滤', async () => {
+  const content = [
+    { promptId: 'idA', promptKey: 'hskp.test', promptCode: 'hello', objectVersionNumber: 1, _token: 'tA' },
+    { promptId: 'idB', promptKey: 'hskp.test', promptCode: 'hello1', objectVersionNumber: 2, _token: 'tB' },
+    { promptId: 'idC', promptKey: 'hskp.test', promptCode: 'hello11', objectVersionNumber: 3, _token: 'tC' },
+  ];
+  await withMockHost(async () => {
+    const r = await getPromptExact({ promptKey: 'hskp.test', promptCode: 'hello1' });
+    assert.strictEqual(r.promptId, 'idB', '应精确匹配 hello1 而非 hello/hello11');
+  }, content);
+});
+
+test('getPromptExact: 无精确匹配抛错', async () => {
+  const content = [
+    { promptId: 'id10', promptKey: 'hskp.10', promptCode: 'hello', objectVersionNumber: 1, _token: 't' },
+  ];
+  await withMockHost(async () => {
+    await assert.rejects(
+      () => getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello' }),
+      /未找到精确匹配/
+    );
+  }, content);
+});
+
+test('getPromptExact: 多条精确匹配抛错（脏数据保护）', async () => {
+  const content = [
+    { promptId: 'id1', promptKey: 'hskp.1', promptCode: 'hello', objectVersionNumber: 1, _token: 't1' },
+    { promptId: 'id2', promptKey: 'hskp.1', promptCode: 'hello', objectVersionNumber: 2, _token: 't2' },
+  ];
+  await withMockHost(async () => {
+    await assert.rejects(
+      () => getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello' }),
+      /找到 2 条精确匹配记录/
+    );
+  }, content);
+});
+
+test('getPromptExact: 缺少 promptKey 或 promptCode 抛错', async () => {
+  await assert.rejects(() => getPromptExact({ promptCode: 'hello' }), /必须同时传/);
+  await assert.rejects(() => getPromptExact({ promptKey: 'hskp.1' }), /必须同时传/);
 });

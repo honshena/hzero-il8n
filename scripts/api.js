@@ -124,6 +124,26 @@ async function getPromptList(params = {}) {
   return request('GET', `/hpfm/v1/prompts/page-list${query}`, null, projectName, environmentName);
 }
 
+// 精确查询单条多语言记录（用于 update/delete 前取 promptId/objectVersionNumber/_token）。
+// /page-list 是模糊查询（promptKey=1 会命中 1/10/11/1xxx），直接取 content[0] 可能改错记录。
+// 这里 size=0 拉全量后客户端按 promptKey+promptCode 精确过滤，保证命中唯一记录。
+async function getPromptExact(params = {}) {
+  const { promptKey, promptCode, tenantId, project, environment } = params;
+  if (!promptKey || !promptCode) {
+    throw new Error('getPromptExact 必须同时传 promptKey 和 promptCode（精确匹配）');
+  }
+  const res = await getPromptList({ promptKey, promptCode, size: 0, tenantId, project, environment });
+  const content = (res && res.content) || [];
+  const exact = content.filter((r) => r.promptKey === promptKey && r.promptCode === promptCode);
+  if (exact.length === 0) {
+    throw new Error(`未找到精确匹配的多语言条目: promptKey="${promptKey}" promptCode="${promptCode}"。page-list 为模糊查询，可能返回相似记录但无完全匹配。请确认 key/code 拼写或租户是否正确。`);
+  }
+  if (exact.length > 1) {
+    throw new Error(`找到 ${exact.length} 条精确匹配记录（预期 1 条）: promptKey="${promptKey}" promptCode="${promptCode}"。可能存在脏数据，请到平台人工核查。`);
+  }
+  return exact[0];
+}
+
 async function getPromptDetail(params = {}) {
   const projectName = params.project || null;
   const environmentName = params.environment || null;
@@ -151,7 +171,7 @@ async function updatePrompt(data, projectName = null, environmentName = null) {
   const required = ['promptId', 'objectVersionNumber', '_token', 'promptKey', 'promptCode', 'lang', 'langDescription', 'tenantId', 'promptConfigs'];
   const missing = required.filter((k) => data[k] === undefined || data[k] === null);
   if (missing.length) {
-    throw new Error(`updatePrompt 缺失必填字段: ${missing.join(', ')}。请从 getPromptList 查询结果获取完整行记录（含 promptId/objectVersionNumber/_token/promptKey/promptCode/lang/langDescription/tenantId），详见 doc/api.md`);
+    throw new Error(`updatePrompt 缺失必填字段: ${missing.join(', ')}。请用 getPromptExact({ promptKey, promptCode }) 取完整行记录（含 promptId/objectVersionNumber/_token/promptKey/promptCode/lang/langDescription/tenantId），不要用 getPromptList 取 content[0]（模糊查询可能命中错误记录），详见 doc/api.md`);
   }
   return request('PUT', '/hpfm/v1/prompts/update', data, projectName, environmentName);
 }
@@ -188,6 +208,7 @@ module.exports = {
   getConfig,
   getProjectByFilePath,
   getPromptList,
+  getPromptExact,
   getPromptDetail,
   getPromptByLang,
   updatePrompt,

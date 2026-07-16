@@ -418,8 +418,11 @@ digraph workflow {
 
 - **`getPromptList`（列表查询）**：按当前用户语言（固定 `Accept-Language: zh-CN`）返回每个 promptKey+promptCode 的**一行**记录（通常为 `zh_CN`）。同一 promptCode 的其他语言行**不会**在列表中返回。仅用于：
   - 确认某 promptCode 是否已注册
-  - 获取 `promptId`/`objectVersionNumber`/`_token`/`lang`/`langDescription`/`tenantId` 等行记录字段（后续 updatePrompt 需要）
+  - 浏览/分页展示，或 `size=0` 拉全量后自行统计
   - **不能**用于判断某语言翻译是否存在或缺失
+  - ⚠️ **`page-list` 是模糊查询**（`promptKey=1` 命中 `1`/`10`/`11`），**禁止**用 `getPromptList(...).content[0]` 为 update/delete 取目标记录；取记录须用 `getPromptExact`（下方）
+
+- **`getPromptExact`（精确查询单条，update/delete 取记录首选）**：内部用 `getPromptList({ size: 0 })` 拉全量后按 `promptKey` + `promptCode` **精确过滤**，返回唯一记录（未找到/找到多条均抛错）。update/delete 前取 `promptId`/`objectVersionNumber`/`_token`/`lang`/`langDescription`/`tenantId` 必须用此函数。
 
 - **`getPromptByLang`（按语言批量查询，首选, 无需token）**：`GET /hpfm/v1/{tenantId}/prompt/{lang}?promptKey=...`，返回 `{ "promptKey.promptCode": "翻译值" }` 扁平对象，包含该语言下所有已存在翻译行的键值对。某 promptCode 在指定语言下无翻译行时不会出现在结果中。支持逗号分隔多个 promptKey。**这是检查翻译缺失的首选方法**（2 次调用即可覆盖整个 promptKey，无需逐个调用 detail）。
 
@@ -564,14 +567,14 @@ const getColumns = () => [
 |----------|----------|----------|
 | 硬编码字符串 | 代码改为 `intl.get(key).d(默认值)` | 注册新 key：`insertPrompt`（先查平台确认不存在，再改代码，再 insert，再查询验证） |
 | 未注册的 key | 代码中 key 改名或保留 | 新 key：`insertPrompt`；改名的旧 key 若无其他引用可删除（需用户确认） |
-| 翻译缺失 | 无需改代码 | **`updatePrompt`**：从 getPromptList 取**完整行记录**（`promptId`/`objectVersionNumber`/`_token`/`promptKey`/`promptCode`/`lang`/`langDescription`/`tenantId`），`promptConfigs` 须包含**所有语言**（含已有+缺失），缺失必填字段会抛错。修改后用 `getPromptDetail` 验证 |
+| 翻译缺失 | 无需改代码 | **`updatePrompt`**：从 **`getPromptExact`** 取**完整行记录**（`promptId`/`objectVersionNumber`/`_token`/`promptKey`/`promptCode`/`lang`/`langDescription`/`tenantId`），`promptConfigs` 须包含**所有语言**（含已有+缺失），缺失必填字段会抛错。修改后用 `getPromptDetail` 验证。⚠️ **禁止**用 `getPromptList().content[0]`（模糊查询可能命中错误记录） |
 | code 格式违规 | 代码中 promptCode 改名 | 旧 key 删除（需用户确认）+ 新 key `insertPrompt` |
 | 英文大小写规范 | 无需改代码 | `updatePrompt`：`promptConfigs` 中对应语言的值改为规范大小写 |
 | intl.get 作用域 | 代码顶层 const 改为函数/getter，JSX 改为调用 | 无 |
 | formatterCollections 使用规范 | 代码补 import / 包裹 HOC / 补 code 声明 | 无 |
 | .d() 默认值语言 | 代码中 `.d()` 默认值改为项目 defaultLanguage | 无（仅代码修改，不影响平台） |
 
-> **翻译缺失修复要点**：`updatePrompt` 的 `promptConfigs` 必须包含该 promptCode 的**全部语言**（不仅是缺失的那个），否则已存在的语言可能被清空。`lang`/`langDescription`/`tenantId` 等字段**必填**，缺失会抛错，须从 getPromptList 行记录完整传入。详见 `doc/api.md` 的 updatePrompt 条目。
+> **翻译缺失修复要点**：`updatePrompt` 的 `promptConfigs` 必须包含该 promptCode 的**全部语言**（不仅是缺失的那个），否则已存在的语言可能被清空。`lang`/`langDescription`/`tenantId` 等字段**必填**，缺失会抛错，须从 **`getPromptExact`** 行记录完整传入。⚠️ **禁止**用 `getPromptList(...).content[0]` 取记录--`page-list` 是模糊查询（`promptKey=1` 会命中 `1`/`10`/`11`），可能取到错误记录导致改错数据；必须用 `getPromptExact` 精确匹配。详见 `doc/api.md` 的 getPromptExact / updatePrompt 条目。
 
 注意：**只有 `hzero.common` 是自动加载的**，项目自定义的 common promptKey（如 `hskp.common`）需要在 `formatterCollections` 的 `code` 数组中显式声明。
 

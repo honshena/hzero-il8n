@@ -47,7 +47,33 @@
 }
 ```
 
+> **⚠️ 模糊查询警告**：`page-list` 接口的 `promptKey`/`promptCode` 参数为**模糊匹配**（SQL `LIKE`）。例如 `promptKey=1` 会命中 `1`、`10`、`11`、`1xxx` 等所有含 "1" 的记录。**禁止**在 update/delete 前直接用 `getPromptList(...).content[0]` 取目标记录--可能取到错误记录导致改错/删错数据。需要精确取单条记录时**必须用 `getPromptExact`**（下方）。`getPromptList` 仅用于：浏览/分页展示、按 `size=0` 拉全量后自行统计、或配合客户端精确过滤。
+
 > **语言行为**：列表按当前用户语言（由 token 对应用户的 `language` 字段决定，本 skill 固定发送 `Accept-Language: zh-CN`）返回每个 promptKey+promptCode 的**一行**记录，`lang` 字段反映该行语言（通常为 `zh_CN`）。同一 promptCode 的其他语言行不会在列表中返回，`promptConfigs` 也可能只含当前语言。如需查看某 promptCode 的**全部语言翻译**，使用 `getPromptDetail`。
+
+### getPromptExact - 精确查询单条多语言记录
+
+| 项 | 值 |
+|----|---|
+| 方法 | `GET`（内部调用 `getPromptList` + 客户端精确过滤） |
+| 路径 | 复用 `/hpfm/v1/prompts/page-list` |
+| 用途 | 按 promptKey + promptCode **精确**查询单条多语言记录；**update/delete 前取 promptId/objectVersionNumber/_token 的首选方法** |
+| 参数 | `promptKey`(必填), `promptCode`(必填), `tenantId`, `project`, `environment` |
+| 返回 | 单条多语言记录对象（`content` 中精确匹配 `promptKey` 且 `promptCode` 的记录）；未找到抛错，找到多条抛错（预期唯一） |
+
+> **为什么需要这个函数**：`page-list` 是模糊查询，`promptKey=1` 会命中 `1`/`10`/`11` 等。直接取 `content[0]` 可能命中错误记录。`getPromptExact` 内部用 `size=0` 拉全量后按 `promptKey === promptKey && promptCode === promptCode` 精确过滤，保证拿到唯一目标记录。
+
+调用示例：
+```javascript
+const record = await api.getPromptExact({
+  promptKey: 'hskp.test',
+  promptCode: 'hello',
+  project: 'console',
+  environment: 'dev',
+});
+// record => { promptId, objectVersionNumber, _token, promptKey, promptCode, lang, langDescription, tenantId, ... }
+// 未找到 => 抛错：未找到精确匹配的多语言条目...
+```
 
 ### getPromptDetail - 查询单条详情
 
@@ -121,16 +147,21 @@ const multi = await api.getPromptByLang({ promptKey: ['hskp.test', 'hskp.common'
 | 用途 | 修改已有多语言条目（补充/修改某语言的翻译值） |
 | body | `{ promptId, objectVersionNumber, _token, promptKey, promptCode, promptConfigs: { zh_CN, en_US, ... }, lang, langDescription, tenantId, description }` |
 | 返回 | 修改后的多语言对象 |
-| 注意 | `promptId`/`objectVersionNumber`/`_token` 必须从 getPromptList 查询结果获取 |
+| 注意 | `promptId`/`objectVersionNumber`/`_token` 必须从 **`getPromptExact`** 查询结果获取（**不要**用 `getPromptList().content[0]`，模糊查询可能命中错误记录） |
 
-> **lang/langDescription/tenantId 必填**：HZERO update 接口要求携带这三个字段（来自 getPromptList 行记录）。`lang` 标识当前操作的源语言行，缺失时为已有 promptCode 补充新语言会触发 `error.db.duplicateKey`。`scripts/api.js` 的 `updatePrompt` **不自动补全**，缺失任一必填字段时直接抛错，调用方须从 getPromptList 行记录完整传入。
+> **lang/langDescription/tenantId 必填**：HZERO update 接口要求携带这三个字段（来自 `getPromptExact` 行记录）。`lang` 标识当前操作的源语言行，缺失时为已有 promptCode 补充新语言会触发 `error.db.duplicateKey`。`scripts/api.js` 的 `updatePrompt` **不自动补全**，缺失任一必填字段时直接抛错，调用方须从 `getPromptExact` 行记录完整传入。
 
 调用示例（补充 en_US 翻译）：
 ```javascript
-const record = (await api.getPromptList({ promptKey: 'hskp.test', promptCode: 'hello', size: 1 })).content[0];
+const record = await api.getPromptExact({  // 精确匹配，不要用 getPromptList().content[0]
+  promptKey: 'hskp.test',
+  promptCode: 'hello',
+  project: 'console',
+  environment: 'dev',
+});
 await api.updatePrompt({
   ...record,
-  promptId: record.promptId,             // 以下字段均来自 getPromptList 行记录
+  promptId: record.promptId,             // 以下字段均来自 getPromptExact 行记录
   objectVersionNumber: record.objectVersionNumber,
   _token: record._token,
   promptKey: record.promptKey,
@@ -151,7 +182,7 @@ await api.updatePrompt({
 | 用途 | 删除多语言条目（逐条审批） |
 | body | `{ promptId, objectVersionNumber, _token, promptKey, promptCode, lang, description, tenantId, langDescription }` |
 | 返回 | 204（`{ success: true }`） |
-| 注意 | 必须用户明确要求删除才执行，禁止批量删除 |
+| 注意 | 必须用户明确要求删除才执行，禁止批量删除；`promptId`/`objectVersionNumber`/`_token` 须从 **`getPromptExact`** 取（不要用 `getPromptList().content[0]`） |
 
 ### refreshCache - 刷新缓存
 
