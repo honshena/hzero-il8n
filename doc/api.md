@@ -21,8 +21,15 @@
 | 方法 | `GET` |
 | 路径 | `/iam/hzero/v1/users/self` |
 | 用途 | 校验 token 有效性（返回当前用户信息） |
-| 参数 | 无 |
+| 参数 | `project`(位置参数1), `environment`(位置参数2) -- 必传，无 currentProject 兜底 |
 | 返回 | `{ id, loginName, realName, email, ... }` |
+
+调用示例：
+```javascript
+await api.getUserSelf('hskp-console', 'dev');
+```
+
+> **传参规则**：查询函数（getPromptList/getPromptExact/getPromptByLang/getPromptDetail）的 `project`/`environment` 作为**参数对象字段**传；`getUserSelf` 与增删改函数（insertPrompt/updatePrompt/deletePrompt）的 `project`/`environment` 作为**末位位置参数**传（字符串）。详见各函数条目示例。
 
 ### getPromptList - 分页查询多语言列表
 

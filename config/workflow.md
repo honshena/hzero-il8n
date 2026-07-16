@@ -46,7 +46,7 @@
 - `tenantId`：默认 0
 
 ### Step 4: 校验 token
-- 调用 `api.getUserSelf(project, environment)` 校验 token 有效性
+- 调用 `api.getUserSelf(project, environment)` 校验 token 有效性（位置参数）
 - 失败（401 / `error.permission.accessTokenExpire`）则要求用户重新提供 token，重复本步直到通过
 - 通过后向用户确认
 

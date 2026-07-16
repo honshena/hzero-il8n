@@ -39,9 +39,9 @@ function readDataTaskDir(taskDir, filename) {
   return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 }
 
-async function validateToken() {
+async function validateToken(projectName, environmentName) {
   try {
-    const user = await api.getUserSelf();
+    const user = await api.getUserSelf(projectName, environmentName);
     return { valid: true, user };
   } catch (e) {
     if (e.message && e.message.includes('TOKEN_EXPIRED')) {
