@@ -54,6 +54,7 @@
 - **只读阶段不建 task 目录**（无破坏性操作，无需审批记录；用户确认修复后才进入 Task & Approval 流程）
 - **必须按下列固定格式输出**，全部用列表/表格，不得用段落叙述或省略
 - **先明细后摘要**：明细按问题类型分类展示（每类一张表），最后输出摘要表
+- **key 拆分为 promptKey 和 promptCode 两列**；**当前值列显示完整的 `intl.get('xxx').d('xxx')` 调用**（不能只写 `.d('xxx')`）
 
 ```
 ## 检查结果
@@ -61,30 +62,30 @@
 ### 明细（按类型分类）
 
 #### 1. 硬编码字符串
-| 序号 | 文件 | 行号 | 当前值 | 建议值 |
-|------|------|------|--------|--------|
-| 1 | src/xxx.js | 4 | '用户管理' | intl.get('hskp.platform.userManage').d('用户管理') |
-| 2 | src/yyy.js | 12 | '确定' | intl.get('hskp.common.ok').d('确定') |
+| 序号 | 文件 | 行号 | 当前值 | 建议 promptKey | 建议 promptCode | 建议值 |
+|------|------|------|--------|----------------|-----------------|--------|
+| 1 | src/xxx.js | 4 | '用户管理' | hskp.platform | userManage | intl.get('hskp.platform.userManage').d('用户管理') |
+| 2 | src/yyy.js | 12 | '确定' | hskp.common | ok | intl.get('hskp.common.ok').d('确定') |
 
 #### 2. 未注册的 key
-| 序号 | 文件 | 行号 | key | 当前 .d() | 建议 |
-|------|------|------|-----|-----------|------|
-| 3 | src/yyy.js | 8 | hskp.test.notexist | Hello | 注册 key（查不存在->改代码->insertPrompt）或改名 |
+| 序号 | 文件 | 行号 | promptKey | promptCode | 当前值 | 建议 |
+|------|------|------|-----------|-----------|--------|------|
+| 3 | src/yyy.js | 8 | hskp.test | notexist | intl.get('hskp.test.notexist').d('Hello') | 注册 key（查不存在->改代码->insertPrompt）或改名 |
 
 #### 3. 翻译缺失
-| 序号 | 文件 | 行号 | key | 已有语言 | 缺失语言 | 建议 |
-|------|------|------|-----|----------|----------|------|
-| 4 | src/zzz.js | 12 | hskp.test.hello | zh_CN=你好 | en_US | 补充 en_US（updatePrompt） |
+| 序号 | 文件 | 行号 | promptKey | promptCode | 当前值 | 已有语言 | 缺失语言 | 建议 |
+|------|------|------|-----------|-----------|--------|----------|----------|------|
+| 4 | src/zzz.js | 12 | hskp.test | hello | intl.get('hskp.test.hello').d('你好') | zh_CN=你好 | en_US | 补充 en_US（updatePrompt） |
 
 #### 4. 英文大小写规范
-| 序号 | 文件 | 行号 | key | 当前 en_US | 建议 en_US | 规则 |
-|------|------|------|-----|-----------|-----------|------|
-| 5 | src/aaa.js | 20 | hskp.test.createBtn | Create user | Create User | 标题类 Title Case |
+| 序号 | 文件 | 行号 | promptKey | promptCode | 当前 en_US（平台值） | 建议 en_US | 规则 |
+|------|------|------|-----------|-----------|---------------------|-----------|------|
+| 5 | src/aaa.js | 20 | hskp.test | createBtn | Create user | Create User | 标题类 Title Case |
 
 #### 5. intl.get 作用域
-| 序号 | 文件 | 行号 | key | 当前 | 建议 |
-|------|------|------|-----|------|------|
-| 6 | src/bbb.js | 7 | hskp.test.hello | 模块顶层调用 | 改为函数/getter |
+| 序号 | 文件 | 行号 | promptKey | promptCode | 当前值 | 建议 |
+|------|------|------|-----------|-----------|--------|------|
+| 6 | src/bbb.js | 7 | hskp.test | hello | intl.get('hskp.test.hello').d('你好') | 改为函数/getter，组件使用时再调用 |
 
 #### 6. formatterCollections 使用规范
 | 序号 | 文件 | 行号 | 问题 | 建议 |
@@ -92,14 +93,14 @@
 | 7 | src/ccc.js | 30 | 未包裹/code 缺 hskp.common | 补 import + 包裹 HOC + 补 code |
 
 #### 7. .d() 默认值语言
-| 序号 | 文件 | 行号 | key | 当前 .d() | 期望语言 | 项目 defaultLanguage |
-|------|------|------|-----|-----------|----------|---------------------|
-| 8 | src/ddd.js | 8 | hskp.test.notexist | Hello（英文） | 中文 | zh_CN |
+| 序号 | 文件 | 行号 | promptKey | promptCode | 当前值 | 期望语言 | 项目 defaultLanguage |
+|------|------|------|-----------|-----------|--------|----------|---------------------|
+| 8 | src/ddd.js | 8 | hskp.test | notexist | intl.get('hskp.test.notexist').d('Hello') | 中文 | zh_CN |
 
 #### 8. code 格式违规
-| 序号 | 文件 | 行号 | key | 当前 promptCode | 建议 promptCode |
-|------|------|------|-----|-----------------|-----------------|
-| 9 | src/eee.js | 15 | hskp.test.some_code_name | some_code_name | someCodeName（camelCase） |
+| 序号 | 文件 | 行号 | promptKey |  promptCode | 建议 promptCode |
+|------|------|------|-----------|-----------------|-----------------|
+| 9 | src/eee.js | 15 | hskp.test | some_code_name | someCodeName（camelCase） |
 
 ### 摘要
 | # | 问题类型 | 数量 |
@@ -117,6 +118,8 @@
 
 **规则**：
 - 明细按问题类型分 8 个小节，每节一张表，序号全局连续递增
+- **key 拆为 promptKey 和 promptCode 两列**（硬编码字符串无原 key 时，列建议的新 promptKey/promptCode；formatterCollections 无 key 时省略此两列）
+- **当前值列显示完整的 `intl.get('promptKey.promptCode').d('默认值')` 调用**（涉及代码 intl.get 的问题类型；英文大小写规范显示平台 en_US 值；formatterCollections 显示问题描述）
 - 无某字段标 `-`；某类型无问题时该节省略不展示
 - 摘要表列所有有问题的类型 + 合计行
 - 明细表的「序号」即修复阶段用户选择「仅选几条」时引用的编号
@@ -124,7 +127,7 @@
 ### Phase 5 - 修复审批
 - 用 `question` 工具询问：全部修复 / 仅选几条（自定义输入序号，如「1,3,5」）/ 跳过
 - **用户确认修复时，才创建 taskId + data.json + task.md**（进入 SKILL.md 的 Task & Approval 破坏性操作流程，每步/每条操作执行 -> 打勾 -> 写摘要）
-- data.json 中每条修复项含：序号、类型、文件、行号、key、当前值、建议值、修复动作（改代码 / 调 API）
+- data.json 中每条修复项含：序号、类型、文件、行号、promptKey、promptCode、当前值（完整 intl.get 调用）、建议值、修复动作（改代码 / 调 API）
 
 ### Phase 6 - 修复执行
 - 按 data.json 逐条：改代码 + 调 API（用 `getPromptExact` 取记录）
