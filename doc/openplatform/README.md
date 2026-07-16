@@ -109,7 +109,7 @@ intl.get('hsop.common.total.of.total.items', { total }).d(`共 ${total} 条`)
 
 ## 新增 / 修改多语言条目
 
-使用 hzero-il8n skill 时：
+使用 hzero-i18n skill 时：
 - promptKey 为 `hsop.openplatform`（业务文案）或 `hsop.common`（通用文案）
 - promptCode 遵循 camelCase、1-5 段规则（见 `doc/intl.md`）
 - 新增/修改后：`hsop.common` 会自动重拉；`hsop.openplatform` 需刷新页面触发重新加载（受 `intlCache` 缓存影响）

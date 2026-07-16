@@ -15,7 +15,7 @@ function parseRepo(url) {
 async function fetchJson(url) {
   try {
     const res = await axios.get(url, {
-      headers: { 'User-Agent': 'hzero-il8n-update-check' },
+      headers: { 'User-Agent': 'hzero-i18n-update-check' },
     });
     return res.data;
   } catch (e) {
@@ -33,7 +33,7 @@ function compareSemver(a, b) {
   return 0;
 }
 
-// 强制检查：始终联网，不读不写 cache。手动 /hzero-il8n-update 命令用。
+// 强制检查：始终联网，不读不写 cache。手动 /hzero-i18n-update 命令用。
 async function checkUpdate(branch = 'master') {
   const repoUrl = pkg.repository && (pkg.repository.url || pkg.repository);
   const repo = parseRepo(repoUrl);

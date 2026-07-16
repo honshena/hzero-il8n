@@ -6,7 +6,7 @@ const path = require('path');
 const { generateCsv, parseCsv, CSV_HEADERS } = require('../scripts/csv');
 
 function tmpFile(name) {
-  return path.join(os.tmpdir(), `hzero-il8n-${name}-${process.pid}.csv`);
+  return path.join(os.tmpdir(), `hzero-i18n-${name}-${process.pid}.csv`);
 }
 
 test('generateCsv + parseCsv 往返还原（含逗号/引号）', () => {

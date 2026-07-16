@@ -6,7 +6,7 @@ const path = require('path');
 const { generateExcel, parseExcel } = require('../scripts/excel');
 
 function tmpFile(name) {
-  return path.join(os.tmpdir(), `hzero-il8n-${name}-${process.pid}.xlsx`);
+  return path.join(os.tmpdir(), `hzero-i18n-${name}-${process.pid}.xlsx`);
 }
 
 test('generateExcel + parseExcel 往返还原字段', () => {

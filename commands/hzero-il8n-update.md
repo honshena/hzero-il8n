@@ -1,10 +1,10 @@
 ---
-description: Check hzero-il8n skill for updates
+description: Check hzero-i18n skill for updates
 ---
 
-加载 hzero-il8n skill，按 SKILL.md「每日更新检查」章节执行强制检查（始终联网、不读 cache、写入 lastCheckDate）。发现新版时 git pull + npm install + setup + 读 CHANGELOG 更新须知。
+加载 hzero-i18n skill，按 SKILL.md「每日更新检查」章节执行强制检查（始终联网、不读 cache、写入 lastCheckDate）。发现新版时 git pull + npm install + setup + 读 CHANGELOG 更新须知。
 
 参数: $ARGUMENTS（可选，分支名，默认 master）
 
-示例: /hzero-il8n-update
-       /hzero-il8n-update dev
+示例: /hzero-i18n-update
+       /hzero-i18n-update dev
