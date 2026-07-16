@@ -6,11 +6,21 @@
 
 h0 平台多语言管理 skill。`scripts/` 下的 Node 脚本（CommonJS）操作 h0 平台多语言：查询/增删改/翻译/检查/导入导出/版本更新检查。
 
+## 项目结构（重构后）
+
+- `SKILL.md` - 精简主文档（共享上下文 + 命令/能力索引 + 全局红线 + Task & Approval 流程）
+- `commands/{check,update,release}/` - 3 个注册的 slash 命令，每个文件夹含 `command.md`（注册文件）+ `workflow.md`（详细流程）
+- `config/workflow.md` - 环境配置流程（非命令，AI 按需触发）
+- `capabilities/*.md` - 7 个核心能力（query/add/modify/delete/translate/export/import，AI 按需加载，非 slash 命令）
+- `doc/` - 参考文档（api.md / h0.md / intl.md / openplatform/），AI 知识库
+- `scripts/` - Node 脚本（api / csv / excel / utils / update / test 运行器）
+- `test/` - 单元测试
+
 ## 关键命令
 
 ```bash
 node scripts/test.js   # 运行单元测试（修改脚本后必跑）
-.\setup.ps1            # 注册 /hzero-front-i18n-* 命令到 opencode / Claude Code
+.\setup.ps1            # 注册 3 个 /hzero-front-i18n-* 命令（check/update/release）到 opencode / Claude Code
 ```
 
 ## 强制规则

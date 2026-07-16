@@ -25,8 +25,6 @@ before(async () => {
       mock: { defaultLanguage: 'zh_CN', environments: { dev: { host: mockUrl, token: 'bearer t', tenantId: 0 } } },
       'hskp-special': { defaultLanguage: 'en_US', environments: { test: { host: 'http://y', token: 'bearer t2', tenantId: 5 } } }
     },
-    currentProject: 'mock',
-    currentEnvironment: 'dev',
     fileProjectMap: {
       'D:\\proj\\console': { project: 'mock', environment: 'dev' },
       'D:\\proj\\console\\special': { project: 'hskp-special', environment: 'test' }
@@ -40,12 +38,17 @@ after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
 });
 
-test('getConfig: 返回当前项目环境配置', () => {
-  const c = getConfig();
+test('getConfig: 指定项目与环境返回配置', () => {
+  const c = getConfig('mock', 'dev');
   assert.strictEqual(c.host, mockUrl);
   assert.strictEqual(c.token, 'bearer t');
   assert.strictEqual(c._project, 'mock');
   assert.strictEqual(c._environment, 'dev');
+});
+
+test('getConfig: 未指定项目/环境抛错（多项目共存，由 AI 按文件路径或询问用户决定）', () => {
+  assert.throws(() => getConfig(), /未指定项目\/环境/);
+  assert.throws(() => getConfig('mock'), /未指定项目\/环境/);
 });
 
 test('getConfig: 指定项目与环境', () => {
@@ -55,7 +58,7 @@ test('getConfig: 指定项目与环境', () => {
 });
 
 test('getConfig: 项目不存在抛错', () => {
-  assert.throws(() => getConfig('nope'), /不存在/);
+  assert.throws(() => getConfig('nope', 'dev'), /不存在/);
 });
 
 test('getProjectByFilePath: 最长路径匹配', () => {
@@ -74,7 +77,7 @@ test('getProjectByFilePath: 无匹配返回 null', () => {
 });
 
 test('request 通过 axios 请求并返回数据', async () => {
-  const user = await getUserSelf();
+  const user = await getUserSelf('mock', 'dev');
   assert.strictEqual(user.id, 1);
   assert.strictEqual(user.name, 'mock-user');
 });
@@ -91,7 +94,7 @@ test('request: 401 抛 TOKEN_EXPIRED', async () => {
   env.projects.mock.environments.dev.host = denyUrl;
   fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
   try {
-    await assert.rejects(() => getUserSelf(), /TOKEN_EXPIRED/);
+    await assert.rejects(() => getUserSelf('mock', 'dev'), /TOKEN_EXPIRED/);
   } finally {
     // 还原 host
     env.projects.mock.environments.dev.host = mockUrl;
@@ -112,7 +115,7 @@ test('request: 平台错误码 error.db.duplicateKey 提取为 API_ERROR', async
   fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
   try {
     await assert.rejects(
-      () => insertPrompt({ promptKey: 'hsop.common', promptCode: 'test', promptConfigs: { zh_CN: '测试' } }),
+      () => insertPrompt({ promptKey: 'hsop.common', promptCode: 'test', promptConfigs: { zh_CN: '测试' } }, 'mock', 'dev'),
       /API_ERROR\[error\.db\.duplicateKey\]/
     );
   } finally {
@@ -133,7 +136,7 @@ test('request: error.permission.accessTokenExpire 抛 TOKEN_EXPIRED', async () =
   env.projects.mock.environments.dev.host = expiredUrl;
   fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
   try {
-    await assert.rejects(() => getUserSelf(), /TOKEN_EXPIRED/);
+    await assert.rejects(() => getUserSelf('mock', 'dev'), /TOKEN_EXPIRED/);
   } finally {
     env.projects.mock.environments.dev.host = mockUrl;
     fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
@@ -152,7 +155,7 @@ test('request: 响应 failed:true 视为错误', async () => {
   env.projects.mock.environments.dev.host = failedUrl;
   fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
   try {
-    await assert.rejects(() => getUserSelf(), /API_ERROR\[error\.something\]/);
+    await assert.rejects(() => getUserSelf('mock', 'dev'), /API_ERROR\[error\.something\]/);
   } finally {
     env.projects.mock.environments.dev.host = mockUrl;
     fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
@@ -202,7 +205,7 @@ test('updatePrompt: 完整参数正确透传', async () => {
       langDescription: '中文(简体)',
       tenantId: 0,
       promptConfigs: { zh_CN: '你好', en_US: 'Hello' },
-    });
+    }, 'mock', 'dev');
     assert.strictEqual(receivedBody.lang, 'zh_CN');
     assert.strictEqual(receivedBody.langDescription, '中文(简体)');
     assert.strictEqual(receivedBody.tenantId, 0);
@@ -227,7 +230,7 @@ test('getPromptByLang: 路径含 tenantId 和 lang，promptKey 作为查询参�
   env.projects.mock.environments.dev.host = srvUrl;
   fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
   try {
-    const result = await getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN' });
+    const result = await getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN', project: 'mock', environment: 'dev' });
     // 路径格式: /hpfm/v1/{tenantId}/prompt/{lang}?promptKey=...
     assert.ok(receivedUrl.startsWith('/hpfm/v1/0/prompt/zh_CN?promptKey='));
     assert.ok(receivedUrl.includes('promptKey=hskp.test'));
@@ -252,7 +255,7 @@ test('getPromptByLang: 数组形式 promptKey 拼接为逗号分隔', async () =
   env.projects.mock.environments.dev.host = srvUrl;
   fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
   try {
-    await getPromptByLang({ promptKey: ['hskp.test', 'hskp.common'], lang: 'en_US' });
+    await getPromptByLang({ promptKey: ['hskp.test', 'hskp.common'], lang: 'en_US', project: 'mock', environment: 'dev' });
     assert.ok(receivedUrl.includes('promptKey=hskp.test%2Chskp.common'));
     assert.ok(receivedUrl.startsWith('/hpfm/v1/0/prompt/en_US?'));
   } finally {
@@ -277,7 +280,7 @@ test('getPromptByLang: 无 token 配置时不发送 authorization 头且正常�
   delete env.projects.mock.environments.dev.token;
   fs.writeFileSync(envPath, JSON.stringify(env), 'utf-8');
   try {
-    const result = await getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN' });
+    const result = await getPromptByLang({ promptKey: 'hskp.test', lang: 'zh_CN', project: 'mock', environment: 'dev' });
     assert.strictEqual(receivedAuth, null, '不应发送 authorization 头');
     assert.deepStrictEqual(result, { 'hskp.test.hello': '你好' });
   } finally {
@@ -320,7 +323,7 @@ test('getPromptExact: 从模糊结果中精确过滤出唯一记录', async () =
     { promptId: 'id11', promptKey: 'hskp.11', promptCode: 'hello', objectVersionNumber: 3, _token: 't11' },
   ];
   await withMockHost(async () => {
-    const r = await getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello' });
+    const r = await getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello', project: 'mock', environment: 'dev' });
     assert.strictEqual(r.promptId, 'id1', '应精确匹配 hskp.1 而非首个 hskp.10');
     assert.strictEqual(r.objectVersionNumber, 2);
   }, content);
@@ -333,7 +336,7 @@ test('getPromptExact: 同 promptKey 下按 promptCode 精确过滤', async () =>
     { promptId: 'idC', promptKey: 'hskp.test', promptCode: 'hello11', objectVersionNumber: 3, _token: 'tC' },
   ];
   await withMockHost(async () => {
-    const r = await getPromptExact({ promptKey: 'hskp.test', promptCode: 'hello1' });
+    const r = await getPromptExact({ promptKey: 'hskp.test', promptCode: 'hello1', project: 'mock', environment: 'dev' });
     assert.strictEqual(r.promptId, 'idB', '应精确匹配 hello1 而非 hello/hello11');
   }, content);
 });
@@ -344,7 +347,7 @@ test('getPromptExact: 无精确匹配抛错', async () => {
   ];
   await withMockHost(async () => {
     await assert.rejects(
-      () => getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello' }),
+      () => getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello', project: 'mock', environment: 'dev' }),
       /未找到精确匹配/
     );
   }, content);
@@ -357,7 +360,7 @@ test('getPromptExact: 多条精确匹配抛错（脏数据保护）', async () =
   ];
   await withMockHost(async () => {
     await assert.rejects(
-      () => getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello' }),
+      () => getPromptExact({ promptKey: 'hskp.1', promptCode: 'hello', project: 'mock', environment: 'dev' }),
       /找到 2 条精确匹配记录/
     );
   }, content);

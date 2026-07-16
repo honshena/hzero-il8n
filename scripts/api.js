@@ -14,20 +14,20 @@ function saveEnv(env) {
 
 function getConfig(projectName, environmentName) {
   const env = loadEnv();
-  const proj = projectName || env.currentProject;
-  const envName = environmentName || env.currentEnvironment;
-  if (!proj || !envName) {
-    throw new Error('请先配置项目和环境。运行 skill 首次使用引导。');
+  // 不设固定 currentProject/currentEnvironment：多项目共存时，项目/环境由 AI 每次操作时
+  // 按当前文件路径用 getProjectByFilePath 确认，或询问用户后记录到 fileProjectMap。
+  if (!projectName || !environmentName) {
+    throw new Error('未指定项目/环境。请根据当前操作的文件用 api.getProjectByFilePath(filePath) 确认关联项目（fileProjectMap 按路径最长匹配），若无关联则询问用户后记录到 fileProjectMap，再传入 project/environment。');
   }
-  const project = env.projects[proj];
+  const project = env.projects[projectName];
   if (!project) {
-    throw new Error(`项目 "${proj}" 不存在`);
+    throw new Error(`项目 "${projectName}" 不存在`);
   }
-  const config = project.environments[envName];
+  const config = project.environments[environmentName];
   if (!config) {
-    throw new Error(`环境 "${envName}" 不存在于项目 "${proj}" 中`);
+    throw new Error(`环境 "${environmentName}" 不存在于项目 "${projectName}" 中`);
   }
-  return { ...config, _project: proj, _environment: envName };
+  return { ...config, _project: projectName, _environment: environmentName };
 }
 
 function getProjectByFilePath(filePath) {
