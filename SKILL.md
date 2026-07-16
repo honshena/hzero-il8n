@@ -52,22 +52,74 @@ h0 平台多语言管理 skill。**所有回复默认中文。**
 
 ## Task & Approval（破坏性操作核心流程）
 
-**query / export 为只读，无需此流程。add / modify / delete / import / check 修复阶段 必须严格按 6 步执行：**
+**query / export 为只读，无需此流程。add / modify / delete / import / check 修复阶段 必须严格按 6 步执行，不可跳过任何步骤。**
 
-1. 创建 taskId 和目录（`generateTaskId` + `createTaskDir`），在 `{taskId}/task.md` 写任务信息与流程清单（全 `[ ]`）
-2. 生成 `data.json`（完整待执行数据，非摘要）
-3. 展示 data.json 完整内容给用户审批（列表/表格逐条，**每条必列 promptKey 与 promptCode**，不省略不摘要）
-4. 用 `question` 工具让用户选择（确认执行 / 跳过 / 要求 AI 修改）。要求修改时由 AI 改 data.json 后重新审批，用户不直接编辑
-5. 执行操作 -- 按 data.json 每条在 task.md Step 5 展开子项，逐条**实际**改代码 + 调 API，每条打勾 `[✓]`，不得只打勾不执行
-6. 写 `result.json`，task.md 填执行结果摘要，Step 6 打勾
+### Step 1: 创建 taskId 和目录
 
+```javascript
+const { generateTaskId, createTaskDir, writeDataTaskDir } = require('./scripts/utils');
+const taskId = generateTaskId('operation-name');   // 格式: task-{名称}-{年}-{月}-{日}-{时}-{分}-{秒}，禁止冒号
+const taskDir = createTaskDir(taskId);             // 在 logs/{taskId}/ 下创建目录
+```
+
+创建后立即在 `{taskDir}/task.md` 写入任务信息与流程清单（全 `[ ]`），执行过程逐一打勾，Step 2 后填待执行数据摘要，Step 6 后填执行结果摘要：
+
+```markdown
+# 任务: {taskId}
+
+- 操作类型: add/modify/delete/import/check-修复
+- 项目/环境: {project} / {environment}
+- 创建时间: {ISO}
+
+## 执行流程（每完成一步打勾并写结果摘要）
+- [ ] Step 1: 创建 taskId 和目录 - 结果：
+- [ ] Step 2: 生成 data.json - 结果：
+- [ ] Step 3: 展示 data.json 给用户审批 - 结果：
+- [ ] Step 4: 用户确认（question 工具）- 结果：
+- [ ] Step 5: 执行操作（按 data.json 每条操作逐一展开为子项，逐条实际执行后打勾）
+  - [ ] <具体操作1：如 修改 src/xxx.js 第 n 行硬编码为 intl.get('hsop.common.xxx').d('...')>
+  - [ ] <具体操作2：如 注册新 key，调用 insertPrompt API>
+  - [ ] ...（data.json 有几条操作就列几条，逐条执行，不得合并/省略/只打勾不执行）
+  - 结果：
+- [ ] Step 6: 写入 result.json - 结果：
+
+## 待执行数据摘要
+（Step 2 后填写：操作类型、条目数、关键内容）
+
+## 执行结果摘要
+（Step 6 后填写：成功/失败、处理条数、验证结果等）
+```
+
+### Step 2: 生成 data.json
+
+```javascript
+writeDataTaskDir(taskDir, 'data.json', { action: 'add', /* 完整待执行数据，非摘要 */ });
+```
+- check 操作：列出所有发现的问题，每个含行号、类型、当前值、建议值
+
+### Step 3: 展示 data.json 给用户审批
+**必须完整展示，不能省略、不能摘要、不能只展示部分**，严格以列表/表格逐条展示，**每条必列 `promptKey` 与 `promptCode`**。data.json 仅展示，用户不直接修改。
+
+### Step 4: 用户确认
+用 `question` 工具让用户选择（确认执行 / 跳过 / 要求 AI 修改）。要求修改时由 AI 改 data.json 后重新展示审批，用户不直接编辑 data.json。
+
+### Step 5: 执行操作
+按 data.json 每条操作在 task.md 的 Step 5 展开为详细子项，逐条**实际**修改源代码文件（硬编码改 intl.get、改大小写、重构作用域、注册 key 等）并**调用 API**（insert/update/delete）同步平台，每完成一条打勾 `[✓]`。不得只打勾不执行、不得只展示不修复。
+
+### Step 6: 写入 result.json
+```javascript
+writeDataTaskDir(taskDir, 'result.json', { /* 执行结果 */ });
+```
+将执行结果摘要追加写入 task.md 的「执行结果摘要」章节，Step 6 打勾 `[✓]`。
+
+### 流程约束
 - taskId 格式：`task-{名称}-{年}-{月}-{日}-{时}-{分}-{秒}`，**禁止冒号 `:`**（Windows 不允许）
 - 新增/修改后必须调查询接口验证生效，**不需要刷新缓存**
 - 新增 key 流程：先校验 promptKey 两段格式 -> 查平台确认不存在 -> 改代码 -> 审批 -> insertPrompt -> 验证。**禁止先新增平台再改代码**
 - 删除必须用户明确要求 + 逐条审批，禁止批量
 
 ### Red Flags（必须立即停止）
-未建 taskId 就操作 / 未生成 data.json 就执行 / 未展示 data.json 就询问确认 / data.json 被省略或摘要 / 用户未确认就增删改 / 完成后未写 result.json / taskId 用冒号 / 未查 fileProjectMap 就操作文件 / 增改后未验证生效 / 未经明确要求就删除 / 批量删除 / 先新增平台再改代码 / 展示 data.json 未列 promptKey 与 promptCode / 用 `getPromptList` 判断翻译缺失 / 用 `getPromptList().content[0]` 取记录。
+未建 taskId 就操作 / 未生成 data.json 就执行 / 未展示 data.json 就询问确认 / data.json 被省略或摘要 / 用户未确认就增删改 / 完成后未写 result.json / taskId 用冒号 / 未查 fileProjectMap 就操作文件 / 增改后未验证生效 / 未经明确要求就删除 / 批量删除 / 先新增平台再改代码 / 展示 data.json 未列 promptKey 与 promptCode / 用 `getPromptList` 判断翻译缺失 / 用 `getPromptList().content[0]` 取记录 / 未在每步完成后于 task.md 打勾就进入下一步 / 未在任务目录创建 task.md 或未写执行结果摘要。
 
 ## 每日更新检查
 
